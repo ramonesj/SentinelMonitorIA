@@ -43,6 +43,21 @@ jobs:
       - name: Validate Docker Compose configuration
         run: docker compose -f backend/docker-compose.yml config --quiet
 
+      - name: Validate local-production Compose configuration
+        env:
+          ENVIRONMENT: local-production
+          POSTGRES_DB: sentinelmonitoria_ci
+          POSTGRES_USER: sentinel
+          POSTGRES_PASSWORD: ci-postgres-password
+          REDIS_PASSWORD: ci-redis-password
+          SECRET_KEY: ci-secret-key-with-at-least-32-characters
+          JWT_SECRET_KEY: ci-jwt-secret-with-at-least-32-characters
+          API_CORS_ORIGINS: '["http://localhost:3000"]'
+        run: docker compose -f backend/docker-compose.local-production.yml config --quiet
+
+      - name: Validate optional frontend Compose configuration
+        run: docker compose -f backend/docker-compose.yml -f backend/docker-compose.frontend.yml config --quiet
+
       - name: Start backend test stack
         run: docker compose -f backend/docker-compose.yml up -d --build postgres redis backend
 

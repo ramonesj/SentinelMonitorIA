@@ -211,7 +211,7 @@ Versiones usadas durante la validación:
 ```text
 Node.js  v24.14.1
 npm      v11.11.0
-Vite     v6.0.5
+Vite     v8.1.5
 Python   3.12 dentro de la imagen backend
 ```
 
@@ -255,6 +255,14 @@ Ejecuciones posteriores:
 .\scripts\start-local.ps1
 ```
 
+Para levantar también el frontend dentro de Docker, sin abrir una segunda terminal:
+
+```powershell
+.\scripts\start-local.ps1 -Build -Frontend
+```
+
+El modo `-Frontend` usa el override opcional `backend/docker-compose.frontend.yml`, conserva los datos del backend y publica Vite en `http://localhost:3000`. No lo uses mientras exista otro Vite manual ocupando ese puerto.
+
 El script inicia PostgreSQL, Redis, backend, Adminer y Redis Commander. LocalStack no se inicia por defecto.
 
 Comprobar estado:
@@ -286,11 +294,11 @@ Para detener y borrar volúmenes locales, incluyendo usuarios y telemetry:
 
 ### 3. Iniciar frontend
 
-En una segunda terminal:
+La opción manual conserva el flujo Vite actual:
 
 ```powershell
 Set-Location frontend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -313,7 +321,21 @@ $env:VITE_API_BASE_URL = "http://localhost:8000"
 npm run dev
 ```
 
-Para detener Vite, usar `Ctrl+C` en su terminal.
+Como alternativa, el frontend puede ejecutarse dentro de Docker junto al stack:
+
+```powershell
+# Detener primero cualquier Vite manual que use el puerto 3000
+docker compose -f backend\docker-compose.yml -f backend\docker-compose.frontend.yml up -d --build
+Invoke-WebRequest http://localhost:3000/ -UseBasicParsing
+```
+
+Para detener el frontend Docker sin borrar datos del backend:
+
+```powershell
+docker compose -f backend\docker-compose.yml -f backend\docker-compose.frontend.yml down
+```
+
+Para detener Vite manual, usar `Ctrl+C` en su terminal.
 
 ### 4. Ejecutar el E2E real del agente
 
@@ -654,12 +676,12 @@ Los errores de validación incluyen un arreglo `errors` y normalmente responden 
 
 ## Frontend
 
-El frontend utiliza React 18.3.1 y Vite 6.0.5, sin framework UI adicional.
+El frontend utiliza React 18.3.1 y Vite 8.1.5, sin framework UI adicional.
 
 Scripts disponibles desde `frontend`:
 
 ```powershell
-npm install       # Instalar dependencias
+npm ci            # Instalar dependencias fijadas por package-lock.json
 npm run dev       # Servidor local en localhost:3000
 npm run build     # Build de producción en frontend/dist
 npm run preview   # Servir el build local
@@ -696,9 +718,9 @@ docker compose -f backend\docker-compose.yml -f backend\docker-compose.redis-wor
 
 El override define `sentinel-worker`, usa `QUEUE_PROVIDER=redis`, publica en `sentinel:stream:<queue>`, consume telemetry mediante el grupo `sentinel-telemetry-workers` y envía fallos agotados a `sentinel:stream:dead_letter`. Verifica el flujo con `GET /health`, `GET /api/v1/telemetry/health` y `XPENDING`; `docker compose down` conserva datos y no debe sustituirse por `down -v`.
 
-LocalStack puede requerir `LOCALSTACK_AUTH_TOKEN` y no forma parte del flujo validado. No activar el perfil `aws` para el desarrollo normal.
+El override opcional `backend/docker-compose.frontend.yml` añade `sentinel-frontend`, construye una imagen Node autocontenida con `npm ci` y conserva `VITE_API_BASE_URL=http://localhost:8000` para que el navegador llegue al backend desde Windows. Después de cambiar el frontend, reconstruye con `--build`. Puede activarse con `-Frontend` en `start-local.ps1` o con los comandos directos de la sección de frontend.
 
-El frontend se ejecuta en una terminal separada; todavía no existe un servicio frontend en el Compose principal.
+LocalStack puede requerir `LOCALSTACK_AUTH_TOKEN` y no forma parte del flujo validado. No activar el perfil `aws` para el desarrollo normal.
 
 ## Agente Vector
 
@@ -718,7 +740,8 @@ La configuración normal pasa `vector validate` después de expandir sus variabl
 | Script | Uso |
 |---|---|
 | `scripts/check-docker.ps1` | Comprueba Docker Desktop, Compose, daemon, WSL y hello-world |
-| `scripts/start-local.ps1` | Inicia, reconstruye, sigue logs o limpia el stack local |
+| `scripts/start-local.ps1` | Inicia, reconstruye, sigue logs o limpia el stack local; `-Frontend` añade Vite en Docker |
+| `scripts/test-local.ps1` | Smoke check read-only de backend, observabilidad y frontend opcional |
 | `scripts/test-api.ps1` | Smoke test histórico de endpoints públicos y development |
 | `scripts/check-system.ps1` | Comprobación general antigua; puede requerir `docker-compose` legacy |
 | `scripts/build-agent.sh` | Construye imagen y paquetes del agente en Linux con Docker, dpkg y rpmbuild |
@@ -726,10 +749,19 @@ La configuración normal pasa `vector validate` después de expandir sus variabl
 Uso de `start-local.ps1`:
 
 ```powershell
-.\scripts\start-local.ps1          # iniciar
-.\scripts\start-local.ps1 -Build   # construir e iniciar
+.\scripts\start-local.ps1          # iniciar backend y servicios
+.\scripts\start-local.ps1 -Build   # construir e iniciar backend y servicios
+.\scripts\start-local.ps1 -Frontend # añadir frontend Docker en localhost:3000
+.\scripts\start-local.ps1 -Build -Frontend # construir e iniciar todo
 .\scripts\start-local.ps1 -Logs    # iniciar y seguir logs
 .\scripts\start-local.ps1 -Clean   # borrar volúmenes locales
+```
+
+Smoke check read-only:
+
+```powershell
+.\scripts\test-local.ps1
+.\scripts\test-local.ps1 -RequireFrontend
 ```
 
 ## Validación
@@ -745,6 +777,12 @@ Invoke-RestMethod http://localhost:8000/health
 Invoke-RestMethod http://localhost:8000/api/v1/telemetry/health
 Invoke-RestMethod http://localhost:8000/api/v1/telemetry/stats
 Invoke-WebRequest http://localhost:3000/ -UseBasicParsing
+```
+
+Smoke check local:
+
+```powershell
+.\scripts\test-local.ps1 -RequireFrontend
 ```
 
 Build frontend:
@@ -939,6 +977,10 @@ Prioridad recomendada:
 - [Compose local](backend/docker-compose.yml)
 - [Compose local-production](backend/docker-compose.local-production.yml)
 - [Ejemplo de entorno local-production](backend/.env.local-production.example)
+- [Runbook local y preproducción](docs/operations/local-runbook.md)
+- [Informe de validación local](docs/operations/local-validation-report.md)
+- [Plan CloudFormation offline](docs/deployment/cloudformation-plan.md)
+- [Foundation CloudFormation](infra/cloudformation/README.md)
 - [Configuración Alembic](backend/alembic.ini)
 - [Licencia](LICENSE)
 

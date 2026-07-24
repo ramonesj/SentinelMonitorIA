@@ -4,12 +4,14 @@
 param(
     [switch]$Build,
     [switch]$Logs,
-    [switch]$Clean
+    [switch]$Clean,
+    [switch]$Frontend
 )
 
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $composeFile = Join-Path $projectRoot "backend\docker-compose.yml"
+$frontendComposeFile = Join-Path $projectRoot "backend\docker-compose.frontend.yml"
 $dockerUserBin = Join-Path $env:LOCALAPPDATA "Programs\DockerDesktop\resources\bin"
 
 if ((Test-Path (Join-Path $dockerUserBin "docker.exe")) -and ($env:Path -notlike "*$dockerUserBin*")) {
@@ -22,6 +24,11 @@ Write-Host "========================================" -ForegroundColor Cyan
 
 if (-not (Test-Path $composeFile)) {
     Write-Host ("ERROR: No existe {0}" -f $composeFile) -ForegroundColor Red
+    exit 1
+}
+
+if ($Frontend -and -not (Test-Path $frontendComposeFile)) {
+    Write-Host ("ERROR: No existe {0}" -f $frontendComposeFile) -ForegroundColor Red
     exit 1
 }
 
@@ -38,6 +45,9 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $composeArgs = @("compose", "-f", $composeFile)
+if ($Frontend) {
+    $composeArgs += @("-f", $frontendComposeFile)
+}
 
 if ($Clean) {
     Write-Host "Eliminando servicios y volúmenes locales..." -ForegroundColor Yellow
@@ -48,7 +58,11 @@ if ($Clean) {
 }
 
 if ($Build) {
-    Write-Host "Construyendo la imagen del backend..." -ForegroundColor Yellow
+    if ($Frontend) {
+        Write-Host "Construyendo las imágenes del backend y frontend..." -ForegroundColor Yellow
+    } else {
+        Write-Host "Construyendo la imagen del backend..." -ForegroundColor Yellow
+    }
     & docker @composeArgs build
     if ($LASTEXITCODE -ne 0) {
         Write-Host "ERROR: falló la construcción." -ForegroundColor Red
@@ -56,7 +70,11 @@ if ($Build) {
     }
 }
 
-Write-Host "Iniciando PostgreSQL, Redis y backend (LocalStack es opcional con el perfil aws)..." -ForegroundColor Yellow
+if ($Frontend) {
+    Write-Host "Iniciando PostgreSQL, Redis, backend y frontend en Docker (LocalStack es opcional con el perfil aws)..." -ForegroundColor Yellow
+} else {
+    Write-Host "Iniciando PostgreSQL, Redis y backend (LocalStack es opcional con el perfil aws)..." -ForegroundColor Yellow
+}
 & docker @composeArgs up -d
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: falló el arranque del stack." -ForegroundColor Red
@@ -74,6 +92,10 @@ $services = @(
     @{ Name = "Adminer"; Port = 8080; Url = "http://localhost:8080" },
     @{ Name = "Redis Commander"; Port = 8081; Url = "http://localhost:8081" }
 )
+
+if ($Frontend) {
+    $services += @{ Name = "Frontend"; Port = 3000; Url = "http://localhost:3000" }
+}
 
 Write-Host ""
 Write-Host "Estado de servicios:" -ForegroundColor Cyan
@@ -95,6 +117,11 @@ if ($Logs) {
     Write-Host "API:       http://localhost:8000" -ForegroundColor White
     Write-Host "Swagger:   http://localhost:8000/api/v1/docs" -ForegroundColor White
     Write-Host "Health:    http://localhost:8000/health" -ForegroundColor White
+    if ($Frontend) {
+        Write-Host "Frontend:  http://localhost:3000" -ForegroundColor White
+    } else {
+        Write-Host "Frontend:  ejecutar npm run dev en frontend o usar -Frontend" -ForegroundColor White
+    }
     Write-Host "Adminer:   http://localhost:8080" -ForegroundColor White
     Write-Host "Redis UI:  http://localhost:8081" -ForegroundColor White
     Write-Host ""

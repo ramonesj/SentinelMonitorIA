@@ -77,6 +77,10 @@ services:
       API_CORS_ORIGINS: ${API_CORS_ORIGINS:?API_CORS_ORIGINS is required}
     volumes:
       - backend_logs:/app/logs
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
       - "8000:8000"
     depends_on:

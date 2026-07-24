@@ -14,7 +14,7 @@ Implementado para desarrollo local:
 - Rate limiter, cola mock predeterminada y Redis Streams local opcional.
 - Worker persistente de telemetry con consumer group, ACK, reintentos y dead-letter.
 - Health checks y métricas Prometheus.
-- Docker Compose de desarrollo con hot reload, override Redis/worker y Compose separado `local-production`.
+- Docker Compose de desarrollo con hot reload, override Redis/worker y frontend opcional autocontenido en Docker.
 
 Pendiente:
 
@@ -49,6 +49,12 @@ Desde la raíz del repositorio:
 .\scripts\start-local.ps1 -Build
 ```
 
+Para incluir el frontend dentro del mismo Compose:
+
+```powershell
+.\scripts\start-local.ps1 -Build -Frontend
+```
+
 O directamente desde la raíz:
 
 ```powershell
@@ -61,6 +67,19 @@ Comprobar:
 docker compose -f backend\docker-compose.yml ps
 Invoke-RestMethod http://localhost:8000/health
 ```
+
+### Frontend Docker opcional
+
+El Compose principal no obliga a ejecutar Node. Para un arranque integrado y reproducible, usa el override:
+
+```powershell
+docker compose -f backend\docker-compose.yml -f backend\docker-compose.frontend.yml config --quiet
+docker compose -f backend\docker-compose.yml -f backend\docker-compose.frontend.yml up -d --build
+Invoke-WebRequest http://localhost:3000/ -UseBasicParsing
+docker compose -f backend\docker-compose.yml -f backend\docker-compose.frontend.yml down
+```
+
+El servicio usa la imagen construida, que incluye el código y las dependencias fijadas por `frontend/package-lock.json`, y define `VITE_API_BASE_URL=http://localhost:8000`. Después de cambiar el frontend o sus dependencias, reconstruye con `--build`; el flujo manual conserva el hot reload. Detén cualquier Vite manual antes de levantarlo porque ambos perfiles usan el puerto `3000`.
 
 ### Redis Streams y worker persistente local
 
