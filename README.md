@@ -1,5 +1,11 @@
 <div align="center">
 
+<p align="center">
+  <img src="Imagenes/cai.png" alt="Hackathon Kiro" width="120" height="120">
+  &nbsp;&nbsp;&nbsp;
+  <img src="Imagenes/bu.png" alt="Código Facilito" width="210" height="75">
+</p>
+
 # SentinelMonitorIA
 
 ### Observabilidad local y AIOps en evolución
@@ -939,3 +945,38 @@ Prioridad recomendada:
 ## Licencia
 
 Apache 2.0. Ver [LICENSE](LICENSE).
+
+## Equipo, créditos y actualización
+
+Este proyecto ha sido realizado por los siguientes integrantes:
+
+<table>
+  <tr>
+    <th>Bandera</th>
+    <th>Integrante</th>
+    <th>País</th>
+    <th>Contacto</th>
+  </tr>
+  <tr>
+    <td><img src="Imagenes/peru.png" alt="Bandera de Perú" width="42" height="42"></td>
+    <td>Jeffersson Pretell Velasquez</td>
+    <td>Perú</td>
+    <td><a href="mailto:jpretelll66@gmail.com">jpretelll66@gmail.com</a></td>
+  </tr>
+  <tr>
+    <td><img src="Imagenes/peru.png" alt="Bandera de Perú" width="42" height="42"></td>
+    <td>Fernanda Flórez Hereña</td>
+    <td>Perú</td>
+    <td><a href="mailto:fernandaflorezherena@gmail.com">fernandaflorezherena@gmail.com</a></td>
+  </tr>
+  <tr>
+    <td><img src="Imagenes/bandeira-venezuela-flag-0.png" alt="Bandera de Venezuela" width="42" height="42"></td>
+    <td>Jose Jose Ramones Moreno</td>
+    <td>Venezuela</td>
+    <td><a href="mailto:ramonesj@gmail.com">ramonesj@gmail.com</a></td>
+  </tr>
+</table>
+
+**Última actualización:** 23 de julio de 2026<br>
+**Copyright © 2026 SentinelMonitorIA.** Todos los derechos reservados.<br>
+Distribuido bajo la [Licencia Apache 2.0](LICENSE).

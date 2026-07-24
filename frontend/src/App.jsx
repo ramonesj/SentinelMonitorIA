@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import kiroLogo from "../../Imagenes/cai.png";
+import codeFacilitoLogo from "../../Imagenes/bu.png";
+import peruFlag from "../../Imagenes/peru.png";
+import venezuelaFlag from "../../Imagenes/bandeira-venezuela-flag-0.png";
 import { API_BASE_URL, fetchDashboardData } from "./api";
 import { clearSession, createApiKey, listApiKeys, login, logout, readSession, register, restoreSession, revokeApiKey, rotateApiKey } from "./auth";
 
@@ -18,6 +22,12 @@ const queueLabels = {
   alerts: "Alerts",
   dead_letter: "Dead letter"
 };
+
+const teamMembers = [
+  { flag: peruFlag, country: "Perú", name: "Jeffersson Pretell Velasquez", email: "jpretelll66@gmail.com" },
+  { flag: peruFlag, country: "Perú", name: "Fernanda Flórez Hereña", email: "fernandaflorezherena@gmail.com" },
+  { flag: venezuelaFlag, country: "Venezuela", name: "Jose Jose Ramones Moreno", email: "ramonesj@gmail.com" }
+];
 
 function formatNumber(value) {
   return new Intl.NumberFormat("es-ES").format(Number(value) || 0);
@@ -268,6 +278,30 @@ function IntegrationPanel({ session }) {
   );
 }
 
+function TeamPanel() {
+  return (
+    <section className="team-panel" aria-labelledby="team-heading">
+      <div className="team-heading">
+        <div><p className="section-kicker">PROJECT TEAM</p><h2 id="team-heading">Participantes</h2><p>Realizado por nuestro equipo con apoyo de Kiro y Código Facilito.</p></div>
+        <span>3 contributors</span>
+      </div>
+      <div className="team-branding" aria-label="Logos de colaboración">
+        <img className="team-brand-logo team-brand-kiro" src={kiroLogo} alt="Hackathon Kiro" />
+        <img className="team-brand-logo team-brand-code" src={codeFacilitoLogo} alt="Código Facilito" />
+      </div>
+      <div className="team-grid">
+        {teamMembers.map(({ flag, country, name, email }) => (
+          <article className="team-card" key={email}>
+            <img className="team-flag" src={flag} alt={`Bandera de ${country}`} />
+            <div><strong>{name}</strong><span>{country}</span><a href={`mailto:${email}`}>{email}</a></div>
+          </article>
+        ))}
+      </div>
+      <p className="team-updated">Última actualización: 23 de julio de 2026</p>
+    </section>
+  );
+}
+
 function Dashboard({ session, onLogout }) {
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -345,8 +379,12 @@ function Dashboard({ session, onLogout }) {
               <article className="panel signal-panel" id="telemetry"><div className="panel-heading"><div><span className="panel-index">02</span><div><p className="eyebrow">TELEMETRY SIGNAL</p><h3>Processing overview</h3></div></div><span className="panel-caption">Live data</span></div><div className="signal-summary"><div><span className="signal-number">{formatNumber(telemetryService.events_processed)}</span><span className="signal-label">events processed</span></div><div className="signal-delta"><span>Success</span><strong>{formatPercent(telemetryService.success_rate)}</strong></div></div><div className="signal-visual" aria-label="Telemetry processing signal visualization">{[36, 52, 44, 63, 58, 74, 67, 81, 72, 88, 79, 92].map((height, index) => <span key={index} style={{ height: `${height}%` }} />)}<div className="signal-line" /></div><div className="signal-footer"><span><i className="legend-dot legend-blue" /> Current workload</span><span>Last 12 signal intervals</span></div></article></section>
             <section className="lower-grid"><article className="panel queue-panel"><div className="panel-heading"><div><span className="panel-index">03</span><div><p className="eyebrow">PROCESSING LAYER</p><h3>Queue activity</h3></div></div><span className="queue-badge">MOCK QUEUE</span></div><div className="queue-list">{queueNames.map((queueName) => { const depth = view.queueDepths[queueName] || 0; const fill = Math.min(depth * 10 + (depth === 0 ? 3 : 0), 100); return <div className="queue-row" key={queueName}><div className="queue-label"><span className="queue-icon" />{queueLabels[queueName] || queueName}</div><div className="queue-bar"><span style={{ width: `${fill}%` }} /></div><strong>{formatNumber(depth)}</strong></div>; })}</div></article><article className="panel activity-panel"><div className="panel-heading"><div><span className="panel-index">04</span><div><p className="eyebrow">SYSTEM LOG</p><h3>Current signals</h3></div></div><span className="live-indicator"><span /> LIVE</span></div><div className="activity-list"><div className="activity-row"><span className="activity-marker marker-mint" /><div><strong>All core services operational</strong><small>PostgreSQL, Redis and Telemetry engine are online</small></div><time>NOW</time></div><div className="activity-row"><span className="activity-marker marker-blue" /><div><strong>Telemetry pipeline ready</strong><small>Queue provider configured as local mock</small></div><time>READY</time></div><div className="activity-row"><span className="activity-marker marker-violet" /><div><strong>Secure session active</strong><small>{displayName} is authenticated with JWT</small></div><time>LIVE</time></div></div></article></section>
           </>}
+          <TeamPanel />
         </main>
-        <footer className="app-footer"><span>SentinelMonitorIA <b>/</b> Executive operations console</span><span>Secure workspace <b>·</b> Fase 3C</span></footer>
+        <footer className="app-footer">
+          <div className="footer-primary"><span>SentinelMonitorIA <b>/</b> Executive operations console</span><span>© 2026 SentinelMonitorIA</span></div>
+          <div className="footer-meta"><span>Última actualización: 23 de julio de 2026</span><span>Todos los derechos reservados <b>·</b> Fase 3C</span></div>
+        </footer>
       </div>
     </div>
   );
