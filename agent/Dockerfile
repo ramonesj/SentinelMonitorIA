@@ -75,7 +75,6 @@ RUN chmod +x /usr/local/bin/vector \
 
 # Variables de entorno por defecto
 ENV SENTINEL_API_ENDPOINT="https://api.sentinelmonitoria.com"
-ENV SENTINEL_API_KEY=""
 ENV SENTINEL_AGENT_VERSION="1.0.0"
 ENV SENTINEL_HOSTNAME=""
 ENV SENTINEL_AGENT_ID=""

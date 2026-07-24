@@ -98,7 +98,7 @@ La aplicación usa automáticamente `http://localhost:8000/api/v1/telemetry` en 
 | Registro y login | Implementado | Login por username o email, JWT access/refresh y restauración de sesión. |
 | API keys | Implementado | Creación, listado, scopes, rotación explícita, revocación y validación persistida para telemetry. |
 | Ingestión telemetry | Implementado localmente | Requiere una API key asociada a una organización. |
-| Agente Vector | Validado localmente | Pipeline E2E aislado con fixture JSONL, API key `telemetry:write`, Redis Streams, worker y persistencia PostgreSQL; las fuentes host/journald/Docker siguen siendo preparatorias. |
+| Agente Vector | Validado localmente | Configuración normal Vector `0.36.0` validada por esquema; pipeline E2E aislado con fixture JSONL, API key `telemetry:write`, Redis Streams, worker y persistencia PostgreSQL. La ejecución de fuentes host/journald/Docker queda pendiente en un host Linux real. |
 | AWS/SQS/S3 | Pendiente | Hay configuración preparatoria; el flujo local usa `QUEUE_PROVIDER=mock` o Redis Streams mediante override. |
 | Terraform/CDK | Pendiente | Directorios reservados para infraestructura futura. |
 | Pruebas automatizadas | Implementado localmente | Auth, API keys, contrato QueueMessage, productor/ACK, retries-DLQ y persistencia del worker Redis. |
@@ -696,16 +696,16 @@ El frontend se ejecuta en una terminal separada; todavía no existe un servicio 
 
 ## Agente Vector
 
-`agent/` contiene una implementación preparatoria basada en Vector:
+`agent/` contiene una configuración Vector `0.36.0` para Linux:
 
-- Fuentes de host metrics, journald, archivos y Docker.
-- Transformaciones VRL.
-- Buffer en disco configurado a 1 GB.
-- Sink HTTP hacia `/api/v1/telemetry`.
+- Fuentes de host metrics, journald, archivos y logs Docker.
+- Transformaciones VRL y envelopes compatibles con `TelemetryBatchSchema`.
+- Buffer en disco de 1 GiB con política `block` para evitar pérdida por saturación.
+- Sink HTTP newline-delimited hacia `/api/v1/telemetry`.
 - Métricas locales en `:9598/metrics`.
 - Dockerfile y scripts de instalación para Linux.
 
-El Compose auxiliar `agent/deploy/docker-compose.yml` también define Prometheus, Grafana y un mock API. No debe ejecutarse al mismo tiempo que el stack principal sin revisar conflictos: ambos pueden usar puertos `8000` y `3000`. El agente aún requiere validación E2E contra API keys reales y configuración de red adecuada; no es parte del inicio rápido principal.
+La configuración normal pasa `vector validate` después de expandir sus variables de entorno. La ejecución de journald, archivos y Docker debe validarse en un host Linux con los permisos y montajes correspondientes. El flujo E2E reproducible para Windows + Docker está separado en `agent/deploy/docker-compose.e2e.yml`. El Compose auxiliar `agent/deploy/docker-compose.yml` también define Prometheus, Grafana y un mock API; no debe ejecutarse al mismo tiempo que el stack principal sin revisar conflictos de puertos.
 
 ## Scripts operativos
 

@@ -1,6 +1,6 @@
 # SentinelMonitorIA Agent
 
-Agente de telemetría basado en Vector para recolectar métricas del host, logs y métricas Docker. El código y la configuración están preparados para una futura distribución Linux, pero el agente todavía no forma parte del flujo validado del Compose principal.
+Agente de telemetría basado en Vector 0.36 para recolectar métricas del host, journald, archivos y logs Docker. La configuración normal está preparada para Linux y se mantiene separada del flujo E2E determinista usado en Windows.
 
 La guía general del proyecto está en [../README.md](../README.md).
 
@@ -21,7 +21,9 @@ Disponible en el repositorio:
 
 Estado validado localmente:
 
-- `Dockerfile.e2e` basado en Vector oficial `0.36.0-alpine` para una build reproducible del E2E.
+- `configs/vector.toml` carga y pasa `vector validate` con Vector `0.36.0` después de expandir sus variables de entorno.
+- La configuración normal conserva fuentes `host_metrics`, journald, archivos y Docker, un buffer de disco de 1 GB y un sink HTTP compatible con `TelemetryBatchSchema`.
+- `Dockerfile.e2e` basado en Vector oficial `0.36.0-alpine` permite validar el esquema sin compilar Rust durante cada E2E local.
 - `configs/vector.e2e.toml` convierte fixture JSONL en batches compatibles con `TelemetryBatchSchema`.
 - API key persistida asociada a organización y con scope `telemetry:write` validada.
 - Networking validado mediante `backend_sentinel-network` y `http://backend:8000`.
@@ -30,7 +32,7 @@ Estado validado localmente:
 
 Pendiente antes de usarlo como integración oficial de producción:
 
-- Validar las fuentes host/journald/Docker del `configs/vector.toml` en un host Linux real.
+- Ejecutar la configuración normal en un host Linux real con acceso a journald, `/var/log` y el socket Docker.
 - Integrar el agente en el pipeline de CI/CD.
 - Revisar el despliegue Linux y secretos para un entorno no local.
 
@@ -197,29 +199,28 @@ Antes de ejecutarlo en un servidor real, revisar URLs de descarga, versión de V
 
 ### Sources
 
-- `system_metrics`: CPU, memoria, disco, filesystem, red y procesos cada 10 segundos.
-- `system_logs`: journald.
-- `application_logs`: archivos bajo `/var/log`.
-- `docker_metrics`: logs Docker.
-- `docker_api`: métricas de Docker cada 30 segundos.
+- `system_metrics`: CPU, memoria, disco, filesystem, red y carga cada 10 segundos.
+- `system_logs`: journald filtrado a unidades del sistema.
+- `application_logs`: archivos bajo `/var/log` con multilinea para entradas fechadas.
+- `docker_logs`: logs de contenedores mediante el socket Docker de sólo lectura.
 
 ### Transforms
 
-- Parseo y nivel de logs del sistema.
-- Enriquecimiento de métricas con hostname y plataforma.
-- Parseo de logs Docker.
-- Buffer de disco con `max_size = 1073741824`.
+- Parseo y nivel de logs del sistema y Docker.
+- Enriquecimiento de métricas con hostname y timestamp.
+- Envelopes `TelemetryBatchSchema` con una métrica o log por evento.
 
 ### Sinks
 
-- `sentinel_api`: HTTP JSON comprimido con Bearer token, retry y rate limit.
+- `sentinel_api`: HTTP JSON newline-delimited con Bearer token, reintentos y buffer de disco de `1 GiB` en modo `block`.
 - `local_log`: consola para debugging.
 - `local_metrics`: Prometheus en `127.0.0.1:9598`.
 
-Validar una configuración en un host con Vector instalado:
+Validar la plantilla en un host con Vector instalado y las variables configuradas:
 
 ```bash
-vector validate /etc/sentinelmonitoria/vector.toml
+envsubst < /etc/sentinelmonitoria/vector.toml > /tmp/vector-generated.toml
+vector validate /tmp/vector-generated.toml
 curl http://localhost:9598/metrics
 ```
 
