@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate backend and frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Validate Docker Compose configuration
+        run: docker compose -f backend/docker-compose.yml config --quiet
+
+      - name: Start backend test stack
+        run: docker compose -f backend/docker-compose.yml up -d --build postgres redis backend
+
+      - name: Wait for backend health
+        shell: bash
+        run: |
+          for attempt in $(seq 1 60); do
+            status="$(docker inspect --format='{{.State.Health.Status}}' sentinel-backend 2>/dev/null || true)"
+            if [ "$status" = "healthy" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+
+          docker compose -f backend/docker-compose.yml logs backend postgres redis
+          echo "Backend did not become healthy within the expected time."
+          exit 1
+
+      - name: Compile backend sources
+        run: docker compose -f backend/docker-compose.yml exec -T backend python -m compileall -q src
+
+      - name: Run backend test suite
+        run: docker compose -f backend/docker-compose.yml exec -T backend pytest -q
+
+      - name: Check whitespace errors
+        run: git diff --check
+
+      - name: Show backend logs on failure
+        if: ${{ failure() }}
+        run: docker compose -f backend/docker-compose.yml logs backend postgres redis
+
+      - name: Stop test stack
+        if: ${{ always() }}
+        run: docker compose -f backend/docker-compose.yml down -v --remove-orphans
