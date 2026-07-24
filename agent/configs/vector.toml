@@ -1,0 +1,221 @@
+# SentinelMonitorIA - Vector Configuration
+# Configuración completa del agente de telemetría
+
+[global]
+data_dir = "/var/lib/sentinel-vector"
+log_level = "info"
+quiet = false
+healthchecks.enabled = true
+shutdown_timeout_secs = 30
+
+[sources]
+# Fuente: Métricas del sistema usando Vector Built-in
+[source.system_metrics]
+type = "host_metrics"
+collectors = ["cpu", "memory", "disk", "filesystem", "network", "processes"]
+namespace = "system"
+scrape_interval_secs = 10
+
+# Fuente: Logs de sistema
+[source.system_logs]
+type = "journald"
+include_units = ["*.service", "*.slice", "*.socket"]
+exclude_units = ["docker.*"]
+batch.max_events = 1000
+batch.timeout_secs = 1
+
+# Fuente: Logs de aplicaciones
+[source.application_logs]
+type = "file"
+include = ["/var/log/**/*.log", "/var/log/syslog", "/var/log/messages"]
+read_from = "end"
+max_read_bytes = 10485760  # 10MB
+multiline.start_pattern = '^\d{4}-\d{2}-\d{2}'
+multiline.mode = "halt_before"
+multiline.condition_pattern = '^(?!\d{4}-\d{2}-\d{2})'
+
+# Fuente: Métricas Docker
+[source.docker_metrics]
+type = "docker_logs"
+include_containers = ["*"]
+exclude_containers = []
+include_images = ["*"]
+exclude_images = []
+include_labels = ["*"]
+exclude_labels = []
+host = "unix:///var/run/docker.sock"
+
+# Fuente: API de Docker (solo métricas)
+[source.docker_api]
+type = "docker_api"
+host = "unix:///var/run/docker.sock"
+scrape_interval_secs = 30
+include_containers = ["*"]
+
+[transforms]
+# Transformación: Parsear logs del sistema
+[transforms.parse_system_logs]
+type = "remap"
+inputs = ["system_logs", "application_logs"]
+source = '''
+# Parsear timestamp
+if exists(.timestamp) {
+  .timestamp = parse_timestamp!(.timestamp, format: "%Y-%m-%d %H:%M:%S")
+} else {
+  .timestamp = now()
+}
+
+# Extraer nivel de log
+if match(.message, r'ERROR|FATAL') {
+  .level = "error"
+} else if match(.message, r'WARN|WARNING') {
+  .level = "warning"
+} else if match(.message, r'INFO') {
+  .level = "info"
+} else if match(.message, r'DEBUG') {
+  .level = "debug"
+} else {
+  .level = "unknown"
+}
+
+# Extraer componente/servicio
+if exists(.SYSLOG_IDENTIFIER) {
+  .service = .SYSLOG_IDENTIFIER
+} else if match(.message, r'\[(\w+)\]') {
+  .service = capture!(.message, r'\[(\w+)\]')[0]
+} else {
+  .service = "system"
+}
+
+# Añadir hostname
+.host = hostname!()
+'''
+
+# Transformación: Enriquecer métricas del sistema
+[transforms.enrich_system_metrics]
+type = "remap"
+inputs = ["system_metrics"]
+source = '''
+# Añadir metadatos
+.host = hostname!()
+.collection_timestamp = now()
+
+# Normalizar nombres de métricas
+if starts_with(.name, "system.cpu") {
+  .metric_type = "cpu"
+} else if starts_with(.name, "system.memory") {
+  .metric_type = "memory"
+} else if starts_with(.name, "system.disk") {
+  .metric_type = "disk"
+} else if starts_with(.name, "system.network") {
+  .metric_type = "network"
+} else {
+  .metric_type = "other"
+}
+
+# Añadir tags por defecto
+.tags = {"agent_version": env!("SENTINEL_AGENT_VERSION"), "platform": "linux"}
+'''
+
+# Transformación: Parsear logs de Docker
+[transforms.parse_docker_logs]
+type = "remap"
+inputs = ["docker_metrics"]
+source = '''
+# Extraer información del contenedor
+if exists(.container_id) {
+  .container_id_short = slice!(.container_id, 0, 12)
+}
+
+if exists(.container_name) {
+  .service = .container_name
+} else if exists(.image) {
+  .service = .image
+}
+
+# Parsear timestamp
+if exists(.timestamp) {
+  .timestamp = parse_timestamp!(.timestamp, format: "%Y-%m-%dT%H:%M:%S.%fZ")
+}
+
+# Extraer nivel de log de Docker
+if match(.message, r'Error|error|ERROR|Fatal|fatal') {
+  .level = "error"
+} else if match(.message, r'Warn|warn|WARNING') {
+  .level = "warning"
+} else {
+  .level = "info"
+}
+'''
+
+# Transformación: Buffer local tolerante a fallos
+[transforms.local_buffer]
+type = "buffer"
+inputs = ["parse_system_logs", "enrich_system_metrics", "parse_docker_logs", "docker_api"]
+buffer.type = "disk"
+buffer.max_size = 1073741824  # 1GB
+buffer.when_full = "block"
+buffer.max_events = 100000
+
+[sinks]
+# Sink: API SentinelMonitorIA (HTTP)
+[sink.sentinel_api]
+type = "http"
+inputs = ["local_buffer"]
+uri = "{{ sentinel_api_endpoint }}/api/v1/telemetry"
+method = "post"
+encoding.codec = "json"
+compression = "gzip"
+rate_limit_duration_secs = 1
+rate_limit_num = 100
+
+# Headers de autenticación
+[sink.sentinel_api.request.headers]
+Authorization = "Bearer {{ sentinel_api_key }}"
+Content-Type = "application/json"
+User-Agent = "SentinelMonitorIA/{{ sentinel_agent_version }}"
+X-Sentinel-Host = "{{ hostname }}"
+X-Sentinel-Agent-ID = "{{ agent_id }}"
+
+# Timeouts y retry
+[sink.sentinel_api.request]
+timeout_secs = 30
+retry_attempts = 5
+retry_initial_backoff_secs = 1
+retry_max_duration_secs = 60
+
+# Buffer para reintentos
+[sink.sentinel_api.buffer]
+type = "memory"
+max_events = 10000
+when_full = "drop_newest"
+
+# Sink: Log local para debugging (opcional)
+[sink.local_log]
+type = "console"
+inputs = ["parse_system_logs"]
+encoding.codec = "json"
+target = "stdout"
+
+# Sink: Métricas locales (opcional)
+[sink.local_metrics]
+type = "prometheus_exporter"
+inputs = ["enrich_system_metrics"]
+address = "127.0.0.1:9598"
+namespace = "sentinel_agent"
+default_buckets = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+
+[env]
+SENTINEL_API_ENDPOINT = ""
+SENTINEL_API_KEY = ""
+SENTINEL_AGENT_VERSION = "1.0.0"
+SENTINEL_HOSTNAME = ""
+SENTINEL_AGENT_ID = ""
+
+# Variables de template para configuración dinámica
+[templates]
+sentinel_api_endpoint = "{{ SENTINEL_API_ENDPOINT }}"
+sentinel_api_key = "{{ SENTINEL_API_KEY }}"
+sentinel_agent_version = "{{ SENTINEL_AGENT_VERSION }}"
+hostname = "{{ SENTINEL_HOSTNAME }}"
+agent_id = "{{ SENTINEL_AGENT_ID }}"

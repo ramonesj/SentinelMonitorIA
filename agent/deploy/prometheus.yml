@@ -1,0 +1,48 @@
+# Prometheus configuration for SentinelMonitorIA Agent
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'sentinelmonitoria'
+
+# Rule files specifies a list of files from which rules are read.
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+scrape_configs:
+  # Scrape Sentinel Agent metrics
+  - job_name: 'sentinel-agent'
+    static_configs:
+      - targets: ['sentinel-agent:9598']
+        labels:
+          service: 'sentinel-agent'
+          environment: 'development'
+    
+    # Metrics relabeling
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'go_.*'
+        action: drop
+      - source_labels: [__name__]
+        regex: 'process_.*'
+        action: drop
+
+  # Scrape Docker metrics (via cAdvisor)
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    
+  # Scrape Node metrics (via node-exporter)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+# Alerting
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093

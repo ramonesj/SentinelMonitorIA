@@ -1,0 +1,64 @@
+# SentinelMonitorIA Backend Dependencies
+# Python 3.12+
+
+# FastAPI y dependencias principales
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+python-multipart==0.0.6
+
+# Base de datos y cache
+asyncpg==0.29.0
+sqlalchemy==2.0.23
+alembic==1.13.1
+psycopg2-binary==2.9.9
+redis==5.0.1
+
+# AWS SDK
+boto3==1.34.0
+botocore==1.34.0
+# AWS async clients are intentionally omitted in local development.
+# The local queue provider is an in-memory mock; AWS adapters will be added in the production phase.
+
+# Runtime utilities
+loguru==0.7.2
+psutil==5.9.6
+PyJWT==2.8.0
+
+# Autenticación y seguridad
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+# Passlib 1.7.4 is incompatible with bcrypt 5.x during password hashing.
+bcrypt==4.0.1
+cryptography==42.0.0
+httpx==0.25.2
+
+# Validación y serialización
+email-validator==2.1.0
+orjson==3.9.10
+ujson==5.8.0
+
+# Logging y observabilidad
+structlog==23.2.0
+python-json-logger==2.0.7
+# OpenTelemetry se añadirá con versiones alineadas en la fase de observabilidad cloud.
+
+# Utilidades
+python-dotenv==1.0.0
+pyyaml==6.0.1
+click==8.1.7
+rich==13.7.0
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+asynctest==0.13.0
+
+# Development
+black==23.11.0
+isort==5.12.0
+mypy==1.7.1
+flake8==6.1.0
+pre-commit==3.5.0

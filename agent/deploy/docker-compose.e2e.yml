@@ -1,0 +1,35 @@
+services:
+  sentinel-agent-e2e:
+    build:
+      context: ..
+      dockerfile: Dockerfile.e2e
+    container_name: sentinel-agent-e2e
+    restart: "no"
+    command: []
+    environment:
+      SENTINEL_API_KEY: ${SENTINEL_API_KEY:?Set SENTINEL_API_KEY to a persisted key with telemetry:write scope}
+      SENTINEL_API_ENDPOINT: ${SENTINEL_API_ENDPOINT:-http://backend:8000}
+      SENTINEL_AGENT_VERSION: ${SENTINEL_AGENT_VERSION:-1.0.0-e2e}
+      SENTINEL_AGENT_ID: ${SENTINEL_AGENT_ID:-sentinel-e2e-vector-agent}
+      SENTINEL_HOSTNAME: ${SENTINEL_HOSTNAME:-sentinel-e2e-vector}
+      VECTOR_LOG_LEVEL: ${VECTOR_LOG_LEVEL:-info}
+    volumes:
+      - ../configs/vector.e2e.toml:/etc/sentinelmonitoria/vector.toml:ro
+      - ../fixtures/e2e-telemetry.jsonl:/var/lib/sentinelmonitoria/e2e/telemetry.jsonl:ro
+    tmpfs:
+      - /var/lib/sentinelmonitoria:uid=100,gid=101,mode=755
+    ports:
+      - "9599:9598"
+    healthcheck:
+      test: ["CMD", "/opt/sentinelmonitoria/bin/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - backend-sentinel-network
+
+networks:
+  backend-sentinel-network:
+    external: true
+    name: backend_sentinel-network

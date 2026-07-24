@@ -1,0 +1,218 @@
+# SentinelMonitorIA Git Ignore
+
+# Environment
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.staging
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+
+# Frontend
+frontend/dist/
+frontend/.next/
+frontend/out/
+frontend/.nuxt/
+frontend/.cache/
+frontend/.svelte-kit/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Terraform
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+*.tfvars
+*.tfplan
+
+# Docker
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Temporary
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Secrets
+secrets.yml
+secrets.yaml
+*.pem
+*.key
+*.cert
+*.crt
+
+# Backups
+*.bak
+*.backup
+
+# Test artifacts
+.pytest_cache/
+.tox/
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
+# Local History for Visual Studio Code
+.history/
+
+# Windows
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
+# Temporary files
+*.swp
+*.swo
+
+# Dev Containers
+.devcontainer/
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+
+# AWS
+.aws/
+
+# Development certificates
+*.p12
+*.pfx
+*.pem
+
+# SentinelMonitorIA specific
+agent/deploy/custom-config.toml
+agent/configs/local/
+agent/bin/local/
+backend/.env
+backend/alembic.ini
+backend/migrations/
+workers/.env
+frontend/.env
+infra/.terraform/
+infra/terraform.tfstate
+infra/terraform.tfstate.backup
+
+# Build artifacts
+dist/
+build/
+out/
+target/
+
+# Documentation
+docs/_build/
+docs/_site/
+
+# Docker volumes
+volumes/
+
+# Package manager specific
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# System files
+/etc/sentinelmonitoria/.env
+/var/lib/sentinelmonitoria/
+/var/log/sentinelmonitoria/

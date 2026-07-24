@@ -1,0 +1,183 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: sentinel-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sentinelmonitoria
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - sentinel-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinelmonitoria"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: sentinel-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ""
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - sentinel-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # LocalStack for AWS simulation (optional)
+  localstack:
+    profiles: ["aws"]
+    image: localstack/localstack:latest
+    container_name: sentinel-localstack
+    restart: unless-stopped
+    environment:
+      SERVICES: sqs,s3
+      DEBUG: 1
+      DATA_DIR: /tmp/localstack/data
+    ports:
+      - "4566:4566"  # LocalStack endpoint
+      - "4576:4576"  # SQS endpoint
+    volumes:
+      - localstack_data:/tmp/localstack
+      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/init.sh
+    networks:
+      - sentinel-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # SentinelMonitorIA Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: sentinel-backend
+    restart: unless-stopped
+    environment:
+      # Application
+      ENVIRONMENT: development
+      DEBUG: "true"
+      LOG_LEVEL: debug
+      
+      # API Configuration
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      API_RELOAD: "true"
+      
+      # Security
+      SECRET_KEY: development-secret-key-change-in-production
+      JWT_SECRET_KEY: development-jwt-secret-change-in-production
+      
+      # Database
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: sentinelmonitoria
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel123
+      
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      
+      # Telemetry Processing
+      TELEMETRY_BATCH_SIZE: 1000
+      TELEMETRY_BUFFER_SIZE: 10000
+      TELEMETRY_FLUSH_INTERVAL: 5
+      
+      # Rate Limiting
+      RATE_LIMIT_REQUESTS: 100
+      RATE_LIMIT_PERIOD: 60
+      RATE_LIMIT_ORGANIZATION_REQUESTS: 1000
+      
+      # Queue Configuration
+      QUEUE_PROVIDER: mock
+      MOCK_QUEUE_MAX_SIZE: 10000
+      
+      # CORS
+      API_CORS_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
+    volumes:
+      - .:/app
+      - backend_logs:/app/logs
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - sentinel-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    command: >
+      sh -c "uvicorn src.main:app 
+      --host 0.0.0.0 
+      --port 8000 
+      --reload 
+      --reload-dir /app/src 
+      --log-level debug"
+
+  # Adminer for database management (optional)
+  adminer:
+    image: adminer:latest
+    container_name: sentinel-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - sentinel-network
+    depends_on:
+      - postgres
+
+  # Redis Commander for Redis management (optional)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: sentinel-redis-commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    networks:
+      - sentinel-network
+    depends_on:
+      - redis
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  localstack_data:
+    driver: local
+  backend_logs:
+    driver: local
+
+networks:
+  sentinel-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: sentinel-net

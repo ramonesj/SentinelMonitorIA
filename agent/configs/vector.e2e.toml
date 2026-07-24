@@ -1,0 +1,127 @@
+# SentinelMonitorIA - deterministic local E2E Vector configuration
+# This file is mounted over /etc/sentinelmonitoria/vector.toml by docker-compose.e2e.yml.
+
+data_dir = "/var/lib/sentinelmonitoria"
+
+[sources.e2e_fixture]
+type = "file"
+include = ["/var/lib/sentinelmonitoria/e2e/telemetry.jsonl"]
+read_from = "beginning"
+max_read_bytes = 1048576
+
+[transforms.parse_fixture]
+type = "remap"
+inputs = ["e2e_fixture"]
+source = '''
+. = parse_json!(.message)
+'''
+
+[transforms.to_telemetry_batch]
+type = "remap"
+inputs = ["parse_fixture"]
+source = '''
+kind = string!(.kind)
+batch_id = string!(.batch_id)
+event_timestamp = string!(.timestamp)
+
+metadata = {
+  "agent_id": get_env_var!("SENTINEL_AGENT_ID"),
+  "hostname": get_env_var!("SENTINEL_HOSTNAME"),
+  "timestamp": event_timestamp,
+  "agent_version": get_env_var!("SENTINEL_AGENT_VERSION"),
+  "platform": "linux",
+  "architecture": "amd64",
+  "tags": {"mode": "e2e", "source": "vector-file"}
+}
+
+if kind == "metric" {
+  metric = {
+    "name": string!(.name),
+    "value": to_float!(.value),
+    "type": string!(.metric_type),
+    "timestamp": event_timestamp,
+    "labels": object!(.labels),
+    "unit": string!(.unit),
+    "description": string!(.description)
+  }
+
+  . = {
+    "metadata": metadata,
+    "metrics": [metric],
+    "logs": [],
+    "events": [],
+    "batch_id": batch_id
+  }
+} else if kind == "log" {
+  log_entry = {
+    "message": string!(.message),
+    "level": string!(.level),
+    "timestamp": event_timestamp,
+    "service": string!(.service),
+    "component": string!(.component),
+    "metadata": object!(.log_metadata),
+    "parsed_fields": object!(.parsed_fields)
+  }
+
+  . = {
+    "metadata": metadata,
+    "metrics": [],
+    "logs": [log_entry],
+    "events": [],
+    "batch_id": batch_id
+  }
+} else {
+  event = {
+    "type": string!(.event_type),
+    "source": string!(.source),
+    "summary": string!(.summary),
+    "timestamp": event_timestamp,
+    "severity": string!(.severity),
+    "details": object!(.details),
+    "correlation_id": string!(.correlation_id)
+  }
+
+  . = {
+    "metadata": metadata,
+    "metrics": [],
+    "logs": [],
+    "events": [event],
+    "batch_id": batch_id
+  }
+}
+'''
+
+[sinks.sentinel_api]
+type = "http"
+inputs = ["to_telemetry_batch"]
+uri = "${SENTINEL_API_ENDPOINT}/api/v1/telemetry"
+method = "post"
+encoding.codec = "json"
+framing.method = "newline_delimited"
+
+[sinks.sentinel_api.batch]
+max_events = 1
+timeout_secs = 1
+
+[sinks.sentinel_api.request.headers]
+Authorization = "Bearer ${SENTINEL_API_KEY}"
+Content-Type = "application/json"
+User-Agent = "SentinelMonitorIA/${SENTINEL_AGENT_VERSION}"
+X-Sentinel-Agent-ID = "${SENTINEL_AGENT_ID}"
+
+[sinks.sentinel_api.request]
+timeout_secs = 30
+retry_attempts = 5
+retry_initial_backoff_secs = 1
+retry_max_duration_secs = 60
+
+[sinks.sentinel_api.buffer]
+type = "memory"
+max_events = 1000
+when_full = "block"
+
+[sinks.local_log]
+type = "console"
+inputs = ["to_telemetry_batch"]
+encoding.codec = "json"
+target = "stdout"

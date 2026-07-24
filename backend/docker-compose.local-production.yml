@@ -1,0 +1,113 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: sentinel-postgres-local-production
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - sentinel-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: sentinel-redis-local-production
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - sentinel-network
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: sentinel-backend-local-production
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: local-production
+      DEBUG: "false"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      API_RELOAD: "false"
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      REDIS_DB: ${REDIS_DB:-0}
+      TELEMETRY_BATCH_SIZE: ${TELEMETRY_BATCH_SIZE:-1000}
+      TELEMETRY_BUFFER_SIZE: ${TELEMETRY_BUFFER_SIZE:-10000}
+      TELEMETRY_FLUSH_INTERVAL: ${TELEMETRY_FLUSH_INTERVAL:-5}
+      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-100}
+      RATE_LIMIT_PERIOD: ${RATE_LIMIT_PERIOD:-60}
+      RATE_LIMIT_ORGANIZATION_REQUESTS: ${RATE_LIMIT_ORGANIZATION_REQUESTS:-1000}
+      QUEUE_PROVIDER: ${QUEUE_PROVIDER:-mock}
+      MOCK_QUEUE_MAX_SIZE: ${MOCK_QUEUE_MAX_SIZE:-10000}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS:?API_CORS_ORIGINS is required}
+    volumes:
+      - backend_logs:/app/logs
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - sentinel-network
+    command: >
+      sh -c "alembic upgrade head && uvicorn src.main:app
+      --host 0.0.0.0
+      --port 8000
+      --workers ${API_WORKERS:-2}
+      --log-level ${LOG_LEVEL:-info}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+    name: sentinelmonitoria_local_production_postgres
+  redis_data:
+    name: sentinelmonitoria_local_production_redis
+  backend_logs:
+    name: sentinelmonitoria_local_production_logs
+
+networks:
+  sentinel-network:
+    name: sentinelmonitoria-local-production
+    driver: bridge

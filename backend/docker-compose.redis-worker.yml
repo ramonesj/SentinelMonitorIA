@@ -1,0 +1,56 @@
+services:
+  backend:
+    environment:
+      QUEUE_PROVIDER: redis
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: sentinel-worker
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: development
+      DEBUG: "false"
+      LOG_LEVEL: info
+      SECRET_KEY: development-secret-key-change-in-production
+      JWT_SECRET_KEY: development-jwt-secret-change-in-production
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: sentinelmonitoria
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel123
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      REDIS_PASSWORD: ""
+      QUEUE_PROVIDER: redis
+      TELEMETRY_BATCH_SIZE: 1000
+      TELEMETRY_BUFFER_SIZE: 10000
+      TELEMETRY_FLUSH_INTERVAL: 5
+    volumes:
+      - .:/app
+      - backend_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - sentinel-network
+    command: ["python", "-m", "src.workers.telemetry_worker"]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import os; raise SystemExit(0 if os.path.exists('/proc/1/cmdline') else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  backend_logs:
+    external: false
+
+networks:
+  sentinel-network:
+    external: true
+    name: backend_sentinel-network
