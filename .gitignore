@@ -208,7 +208,6 @@ docs/_site/
 volumes/
 
 # Package manager specific
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
 

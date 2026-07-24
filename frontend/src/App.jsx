@@ -649,4 +649,5 @@ function App() {
   return <Dashboard session={session} onLogout={handleLogout} theme={theme} onThemeChange={() => setTheme((current) => current === "dark" ? "light" : "dark")} />;
 }
 
+export { AuthScreen, IntegrationPanel, MembersPanel };
 export default App;
