@@ -606,3 +606,346 @@ code { color: #8093aa; font-family: "DM Mono", monospace; font-size: 8px; }
   .team-brand-kiro { width: 56px; height: 56px; }
   .team-brand-code { width: 135px; height: 48px; }
 }
+
+/* Theme controls and light mode */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px;
+  color: #b9c6d5;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 10px;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+.theme-toggle:hover { border-color: rgba(116, 226, 194, 0.55); color: #9cf0d5; background: rgba(98, 211, 178, 0.08); }
+.theme-toggle-icon { display: grid; place-items: center; width: 15px; height: 15px; font-size: 14px; line-height: 1; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #5eead4; outline-offset: 3px; }
+
+:root[data-theme="light"] {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+:root[data-theme="light"] body,
+:root[data-theme="light"] .app-shell,
+:root[data-theme="light"] .auth-shell,
+:root[data-theme="light"] .auth-loading { color: #0f172a; background: #f1f5f9; }
+
+:root[data-theme="light"] .sidebar { border-color: #dbe4ee; background: #ffffff; }
+:root[data-theme="light"] .brand-copy strong { color: #172235; }
+:root[data-theme="light"] .brand-copy strong span { color: #087f6b; }
+:root[data-theme="light"] .brand-copy small { color: #64748b; }
+:root[data-theme="light"] .sidebar-section-label { color: #64748b; }
+:root[data-theme="light"] .nav-link { color: #526277; }
+:root[data-theme="light"] .nav-link:hover { color: #0f766e; background: #f1f8f6; }
+:root[data-theme="light"] .nav-link.active { border-color: #b6e4d8; color: #075e52; background: linear-gradient(90deg, #e4f7f1, #f8fcfb); }
+:root[data-theme="light"] .nav-icon { border-color: #d6e0ea; color: #64748b; }
+:root[data-theme="light"] .nav-link.active .nav-icon { border-color: #9ad8c8; color: #087f6b; background: #dff5ee; }
+:root[data-theme="light"] .external-mark,
+:root[data-theme="light"] .more-mark { color: #64748b; }
+:root[data-theme="light"] .sidebar-status-card { border-color: #b8e4d8; background: linear-gradient(145deg, #edf9f5, #f7fbfc); }
+:root[data-theme="light"] .sidebar-status-heading { color: #526277; }
+:root[data-theme="light"] .sidebar-status-card strong { color: #134e4a; }
+:root[data-theme="light"] .sidebar-status-card > span { color: #64748b; }
+:root[data-theme="light"] .sidebar-user strong { color: #334155; }
+:root[data-theme="light"] .sidebar-user small { color: #64748b; }
+
+:root[data-theme="light"] .main-viewport { background: #f1f5f9; }
+:root[data-theme="light"] .page-header { border-color: #dbe4ee; background: rgba(255, 255, 255, 0.94); }
+:root[data-theme="light"] .breadcrumb { color: #64748b; }
+:root[data-theme="light"] .breadcrumb b { color: #94a3b8; }
+:root[data-theme="light"] .breadcrumb strong { color: #334155; }
+:root[data-theme="light"] .live-pill { color: #087f6b; }
+:root[data-theme="light"] .theme-toggle { border-color: #cbd8e5; color: #334155; background: #ffffff; }
+:root[data-theme="light"] .theme-toggle:hover { border-color: #75cdb8; color: #075e52; background: #effbf7; }
+:root[data-theme="light"] .refresh-button { border-color: #cbd8e5; color: #475569; background: #ffffff; }
+:root[data-theme="light"] .refresh-button:hover:not(:disabled) { border-color: #75cdb8; color: #075e52; background: #effbf7; }
+:root[data-theme="light"] .header-user-button { color: #334155; }
+:root[data-theme="light"] .header-user-button:hover .header-avatar,
+:root[data-theme="light"] .user-menu-button:hover .avatar { box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.13); }
+
+:root[data-theme="light"] .section-kicker,
+:root[data-theme="light"] .eyebrow { color: #087f6b; }
+:root[data-theme="light"] .welcome-row h1 { color: #172235; }
+:root[data-theme="light"] .welcome-row h1 em { color: #087f6b; }
+:root[data-theme="light"] .welcome-copy { color: #526277; }
+:root[data-theme="light"] .last-sync { color: #64748b; }
+:root[data-theme="light"] .last-sync strong { color: #334155; }
+:root[data-theme="light"] .sync-line { background: #94a3b8; }
+
+:root[data-theme="light"] .executive-hero { border-color: #a9ded1; background: radial-gradient(circle at 85% 48%, rgba(45, 177, 150, 0.2), transparent 27rem), linear-gradient(116deg, #e4f7f1 0%, #eaf8f5 43%, #dff3ef 100%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 18px 45px rgba(71, 104, 126, 0.12); }
+:root[data-theme="light"] .hero-tag,
+:root[data-theme="light"] .hero-content h2 span { color: #087f6b; }
+:root[data-theme="light"] .hero-content h2 { color: #123b3a; }
+:root[data-theme="light"] .hero-content p { color: #426b68; }
+:root[data-theme="light"] .primary-action { color: #ffffff; background: #087f6b; }
+:root[data-theme="light"] .primary-action:hover { background: #0f9b83; box-shadow: 0 0 22px rgba(15, 155, 131, 0.2); }
+:root[data-theme="light"] .secondary-action { color: #23645c; }
+:root[data-theme="light"] .secondary-action:hover { color: #064e45; }
+:root[data-theme="light"] .score-inner { border-color: #a9ded1; background: #d2eee7; }
+:root[data-theme="light"] .score-inner strong { color: #123b3a; }
+:root[data-theme="light"] .score-inner span { color: #39766c; }
+:root[data-theme="light"] .score-status { color: #23645c; }
+:root[data-theme="light"] .hero-score-copy small { color: #4c8178; }
+:root[data-theme="light"] .hero-orbit { border-color: rgba(8, 127, 107, 0.15); }
+
+:root[data-theme="light"] .error-banner { border-color: #f3b4bd; background: #fff1f2; }
+:root[data-theme="light"] .error-banner strong { color: #9f1239; }
+:root[data-theme="light"] .error-banner span { color: #be123c; }
+:root[data-theme="light"] .error-banner button { border-color: #f3a4b2; color: #be123c; }
+:root[data-theme="light"] .loading-state { color: #526277; }
+:root[data-theme="light"] .loader { border-color: #b7e7dc; border-top-color: #0f9b83; }
+
+:root[data-theme="light"] .kpi-card,
+:root[data-theme="light"] .panel { border-color: #dbe4ee; background: #ffffff; box-shadow: 0 8px 24px rgba(71, 104, 126, 0.05); }
+:root[data-theme="light"] .kpi-label,
+:root[data-theme="light"] .kpi-detail { color: #526277; }
+:root[data-theme="light"] .kpi-marker { color: #94a3b8; }
+:root[data-theme="light"] .kpi-value { color: #172235; }
+:root[data-theme="light"] .section-heading h2 { color: #172235; }
+:root[data-theme="light"] .section-meta { color: #526277; }
+:root[data-theme="light"] .panel-index { border-color: #dbe4ee; color: #64748b; }
+:root[data-theme="light"] .panel-heading .eyebrow { color: #64748b; }
+:root[data-theme="light"] .panel-heading h3 { color: #243449; }
+:root[data-theme="light"] .panel-caption { color: #64748b; }
+:root[data-theme="light"] .queue-badge { border-color: #b8e4d8; color: #087f6b; background: #effbf7; }
+:root[data-theme="light"] .service-row,
+:root[data-theme="light"] .service-footer,
+:root[data-theme="light"] .activity-row { border-color: #e5ebf2; }
+:root[data-theme="light"] .service-code { border-color: #c5dced; color: #39709a; background: #f1f8fc; }
+:root[data-theme="light"] .service-leading strong { color: #334155; }
+:root[data-theme="light"] .service-leading small { color: #64748b; }
+:root[data-theme="light"] .service-arrow { color: #94a3b8; }
+:root[data-theme="light"] .service-footer { color: #64748b; }
+:root[data-theme="light"] code { color: #526b85; }
+:root[data-theme="light"] .signal-number { color: #172235; }
+:root[data-theme="light"] .signal-label,
+:root[data-theme="light"] .signal-delta span,
+:root[data-theme="light"] .signal-footer { color: #64748b; }
+:root[data-theme="light"] .signal-delta strong { color: #087f6b; }
+:root[data-theme="light"] .signal-visual { border-color: #dbe4ee; background: repeating-linear-gradient(to bottom, transparent 0, transparent 31px, #edf1f5 32px); }
+:root[data-theme="light"] .signal-line { background: rgba(8, 127, 107, 0.25); box-shadow: 0 0 8px rgba(8, 127, 107, 0.2); }
+:root[data-theme="light"] .signal-footer span:first-child { color: #526277; }
+:root[data-theme="light"] .queue-label { color: #526277; }
+:root[data-theme="light"] .queue-bar { background: #e5f0f6; }
+:root[data-theme="light"] .queue-row strong { color: #334155; }
+:root[data-theme="light"] .activity-row strong { color: #334155; }
+:root[data-theme="light"] .activity-row small { color: #64748b; }
+:root[data-theme="light"] .activity-row time { color: #64748b; }
+
+:root[data-theme="light"] .app-footer { border-color: #dbe4ee; color: #526277; }
+:root[data-theme="light"] .footer-meta { color: #64748b; }
+:root[data-theme="light"] .app-footer b { color: #94a3b8; }
+
+:root[data-theme="light"] .auth-shell::before { opacity: 0.55; background-image: linear-gradient(rgba(71, 104, 126, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(71, 104, 126, 0.06) 1px, transparent 1px); }
+:root[data-theme="light"] .auth-glow-one { background: #8edecb; }
+:root[data-theme="light"] .auth-glow-two { background: #b7d4ed; }
+:root[data-theme="light"] .auth-intro-content h1 { color: #172235; }
+:root[data-theme="light"] .auth-intro-content h1 em { color: #087f6b; }
+:root[data-theme="light"] .auth-intro-content > p:not(.section-kicker) { color: #526277; }
+:root[data-theme="light"] .auth-feature-list { color: #334155; }
+:root[data-theme="light"] .auth-version { color: #64748b; }
+:root[data-theme="light"] .auth-card-wrap { border-color: #dbe4ee; }
+:root[data-theme="light"] .auth-card { border-color: #d5e0ea; background: rgba(255, 255, 255, 0.92); box-shadow: 0 24px 60px rgba(71, 104, 126, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9); }
+:root[data-theme="light"] .auth-card h2 { color: #172235; }
+:root[data-theme="light"] .auth-card-header p { color: #526277; }
+:root[data-theme="light"] .auth-form label { color: #526277; }
+:root[data-theme="light"] .auth-form input,
+:root[data-theme="light"] .integration-form input,
+:root[data-theme="light"] .integration-form select { border-color: #cbd8e5; color: #172235; background: #ffffff; }
+:root[data-theme="light"] .auth-form input::placeholder { color: #94a3b8; }
+:root[data-theme="light"] .auth-form input:focus,
+:root[data-theme="light"] .integration-form input:focus,
+:root[data-theme="light"] .integration-form select:focus { border-color: #3db59b; box-shadow: 0 0 0 3px rgba(15, 155, 131, 0.12); }
+:root[data-theme="light"] .auth-form label.checkbox-label { color: #526277; }
+:root[data-theme="light"] .secure-label { color: #287b6c; }
+:root[data-theme="light"] .auth-switch { color: #526277; }
+:root[data-theme="light"] .auth-disclaimer { color: #64748b; }
+:root[data-theme="light"] .auth-submit,
+:root[data-theme="light"] .integration-submit,
+:root[data-theme="light"] .copy-key-button { border-color: #087f6b; color: #ffffff; background: #087f6b; }
+:root[data-theme="light"] .auth-submit:hover:not(:disabled),
+:root[data-theme="light"] .integration-submit:hover:not(:disabled),
+:root[data-theme="light"] .copy-key-button:hover { background: #0f9b83; }
+
+:root[data-theme="light"] .integration-panel { border-color: #b8e4d8; background: linear-gradient(135deg, #f0faf7, #ffffff); }
+:root[data-theme="light"] .integration-heading h2,
+:root[data-theme="light"] .team-heading h2 { color: #172235; }
+:root[data-theme="light"] .integration-heading p:not(.section-kicker),
+:root[data-theme="light"] .team-heading p:not(.section-kicker) { color: #526277; }
+:root[data-theme="light"] .integration-endpoint { border-color: #b8e4d8; color: #087f6b; background: #effbf7; }
+:root[data-theme="light"] .integration-form label { color: #526277; }
+:root[data-theme="light"] .integration-org { border-color: #dbe4ee; background: #f8fafc; }
+:root[data-theme="light"] .integration-org span,
+:root[data-theme="light"] .integration-org small { color: #64748b; }
+:root[data-theme="light"] .integration-org strong { color: #334155; }
+:root[data-theme="light"] .integration-output { border-color: #dbe4ee; background: #f8fafc; }
+:root[data-theme="light"] .integration-empty { color: #64748b; }
+:root[data-theme="light"] .integration-empty strong { color: #334155; }
+:root[data-theme="light"] .integration-empty-icon { border-color: #b8e4d8; color: #087f6b; }
+:root[data-theme="light"] .integration-warning { border-color: #f1d39b; color: #9a6700; background: #fffaf0; }
+:root[data-theme="light"] .integration-error { border-color: #f3b4bd; color: #be123c; background: #fff1f2; }
+:root[data-theme="light"] .generated-key-heading strong { color: #146c5c; }
+:root[data-theme="light"] .key-value { border-color: #b8e4d8; color: #146c5c; background: #effbf7; }
+:root[data-theme="light"] .generated-key pre { color: #526b85; background: #eef2f6; }
+:root[data-theme="light"] .key-list-heading { border-color: #dbe4ee; color: #526277; }
+:root[data-theme="light"] .key-list-heading small,
+:root[data-theme="light"] .key-row small,
+:root[data-theme="light"] .key-list-empty { color: #64748b; }
+:root[data-theme="light"] .key-row { border-color: #e5ebf2; }
+:root[data-theme="light"] .key-row strong { color: #334155; }
+:root[data-theme="light"] .team-panel { border-color: #dbe4ee; background: linear-gradient(135deg, #ffffff, #f4faf9); }
+:root[data-theme="light"] .team-heading > span { color: #64748b; }
+:root[data-theme="light"] .team-branding { border-color: #dbe4ee; }
+:root[data-theme="light"] .team-card { border-color: #dbe4ee; background: #f8fafc; }
+:root[data-theme="light"] .team-card strong { color: #334155; }
+:root[data-theme="light"] .team-card span { color: #64748b; }
+:root[data-theme="light"] .team-updated { color: #64748b; }
+
+@media (max-width: 680px) {
+  .theme-toggle-label { display: none; }
+  .theme-toggle { width: 32px; justify-content: center; padding: 0; }
+}
+
+
+/* Organization membership and RBAC */
+.members-panel {
+  margin: 0 0 30px;
+  padding: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(16, 23, 34, 0.98), rgba(14, 29, 36, 0.96));
+}
+.members-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.members-heading h2 { margin: 0; color: #e7f0f4; font-size: 18px; font-weight: 600; letter-spacing: -0.05em; }
+.members-heading p:not(.section-kicker) { max-width: 600px; margin: 7px 0 0; color: #78899e; font-size: 10px; line-height: 1.5; }
+.members-heading > span { color: #6d8095; font-family: "DM Mono", monospace; font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; }
+.member-add-form { display: grid; grid-template-columns: minmax(180px, 1fr) 140px auto; align-items: end; gap: 12px; margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid rgba(148, 163, 184, 0.1); }
+.member-add-form label { display: grid; gap: 6px; color: #91a2b6; font-family: "DM Mono", monospace; font-size: 8px; letter-spacing: 0.05em; text-transform: uppercase; }
+.member-add-form input, .member-add-form select, .member-actions select { min-height: 37px; padding: 0 10px; border: 1px solid rgba(148, 163, 184, 0.16); border-radius: 5px; outline: none; color: #dce8ef; background: #0b121d; font-family: "Manrope", sans-serif; font-size: 10px; }
+.member-add-form input:focus, .member-add-form select:focus, .member-actions select:focus { border-color: rgba(117, 217, 190, 0.65); box-shadow: 0 0 0 3px rgba(117, 217, 190, 0.08); }
+.member-add-form small { grid-column: 1 / -1; color: #607087; font-size: 9px; }
+.member-add-button { display: flex; align-items: center; justify-content: space-between; min-height: 37px; gap: 12px; padding: 0 12px; border: 1px solid #80dfc3; border-radius: 5px; color: #09211d; background: #80dfc3; font-size: 10px; font-weight: 700; }
+.member-add-button:hover:not(:disabled) { background: #b0f2de; }
+.member-add-button:disabled { cursor: wait; opacity: 0.6; }
+.member-list { display: grid; gap: 0; }
+.member-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; min-height: 66px; border-bottom: 1px solid rgba(148, 163, 184, 0.08); }
+.member-row:last-child { border-bottom: 0; }
+.member-avatar { display: grid; place-items: center; width: 31px; height: 31px; border: 1px solid rgba(116, 226, 194, 0.22); border-radius: 50%; color: #09211d; background: #80dfc3; font-family: "DM Mono", monospace; font-size: 9px; }
+.member-identity { min-width: 0; }
+.member-identity strong, .member-identity span, .member-identity small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member-identity strong { color: #cbd9e3; font-size: 10px; font-weight: 600; }
+.member-identity span { margin-top: 3px; color: #7ed9bd; font-family: "DM Mono", monospace; font-size: 8px; }
+.member-identity small { margin-top: 3px; color: #617087; font-size: 8px; }
+.member-role { padding: 5px 7px; border: 1px solid rgba(116, 226, 194, 0.16); border-radius: 4px; color: #77cbb4; background: rgba(116, 226, 194, 0.06); font-family: "DM Mono", monospace; font-size: 8px; text-transform: uppercase; }
+.member-role-admin { border-color: rgba(179, 157, 248, 0.28); color: #c2b4f4; background: rgba(179, 157, 248, 0.08); }
+.member-role-manager { border-color: rgba(91, 164, 248, 0.25); color: #8abcf2; background: rgba(91, 164, 248, 0.08); }
+.member-actions { display: flex; align-items: center; gap: 7px; }
+.member-actions select { min-height: 29px; padding: 0 7px; color: #aebdcc; background: #0b121d; font-size: 9px; }
+.member-actions button { padding: 5px 8px; border: 1px solid rgba(251, 113, 133, 0.25); border-radius: 4px; color: #fb9aaa; background: transparent; font-family: "DM Mono", monospace; font-size: 8px; text-transform: uppercase; }
+.member-actions button:hover:not(:disabled) { background: rgba(251, 113, 133, 0.08); }
+.member-actions button:disabled { cursor: wait; opacity: 0.5; }
+.member-list-empty { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 75px; color: #607087; font-size: 10px; }
+
+:root[data-theme="light"] .members-panel { border-color: #dbe4ee; background: linear-gradient(135deg, #ffffff, #f4faf9); }
+:root[data-theme="light"] .members-heading h2 { color: #172235; }
+:root[data-theme="light"] .members-heading p:not(.section-kicker) { color: #526277; }
+:root[data-theme="light"] .members-heading > span { color: #64748b; }
+:root[data-theme="light"] .member-add-form { border-color: #dbe4ee; }
+:root[data-theme="light"] .member-add-form label { color: #526277; }
+:root[data-theme="light"] .member-add-form input,
+:root[data-theme="light"] .member-add-form select,
+:root[data-theme="light"] .member-actions select { border-color: #cbd8e5; color: #172235; background: #ffffff; }
+:root[data-theme="light"] .member-add-form input:focus,
+:root[data-theme="light"] .member-add-form select:focus,
+:root[data-theme="light"] .member-actions select:focus { border-color: #3db59b; box-shadow: 0 0 0 3px rgba(15, 155, 131, 0.12); }
+:root[data-theme="light"] .member-add-form small,
+:root[data-theme="light"] .member-list-empty { color: #64748b; }
+:root[data-theme="light"] .member-add-button { border-color: #087f6b; color: #ffffff; background: #087f6b; }
+:root[data-theme="light"] .member-add-button:hover:not(:disabled) { background: #0f9b83; }
+:root[data-theme="light"] .member-row { border-color: #e5ebf2; }
+:root[data-theme="light"] .member-avatar { border-color: #9ad8c8; color: #ffffff; background: #087f6b; }
+:root[data-theme="light"] .member-identity strong { color: #334155; }
+:root[data-theme="light"] .member-identity span { color: #087f6b; }
+:root[data-theme="light"] .member-identity small { color: #64748b; }
+:root[data-theme="light"] .member-role { border-color: #b8e4d8; color: #087f6b; background: #effbf7; }
+:root[data-theme="light"] .member-role-admin { border-color: #d1c6f4; color: #765bc2; background: #f5f1ff; }
+:root[data-theme="light"] .member-role-manager { border-color: #bdd8f5; color: #39709a; background: #f1f8fc; }
+
+@media (max-width: 760px) {
+  .members-heading { align-items: flex-start; flex-direction: column; }
+  .member-add-form { grid-template-columns: 1fr 1fr; }
+  .member-add-button { grid-column: 1 / -1; }
+}
+
+@media (max-width: 560px) {
+  .member-add-form { grid-template-columns: 1fr; }
+  .member-add-button { grid-column: auto; }
+  .member-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .member-actions { grid-column: 2 / -1; justify-content: flex-end; padding-bottom: 11px; }
+}
+
+
+/* Organization invitations */
+.invitation-section { margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid rgba(148, 163, 184, 0.1); }
+.invitation-grid { display: grid; grid-template-columns: minmax(250px, 0.75fr) minmax(360px, 1.25fr); gap: 18px; }
+.invitation-accept-form, .invitation-create-form { display: grid; align-content: start; grid-template-columns: 1fr auto; align-items: end; gap: 10px; }
+.invitation-create-form { grid-template-columns: minmax(150px, 1fr) 100px 100px auto; }
+.invitation-accept-form label, .invitation-create-form label { display: grid; gap: 6px; color: #91a2b6; font-family: "DM Mono", monospace; font-size: 8px; letter-spacing: 0.05em; text-transform: uppercase; }
+.invitation-accept-form input, .invitation-create-form input, .invitation-create-form select { min-height: 37px; padding: 0 10px; border: 1px solid rgba(148, 163, 184, 0.16); border-radius: 5px; outline: none; color: #dce8ef; background: #0b121d; font-family: "Manrope", sans-serif; font-size: 10px; }
+.invitation-accept-form input:focus, .invitation-create-form input:focus, .invitation-create-form select:focus { border-color: rgba(117, 217, 190, 0.65); box-shadow: 0 0 0 3px rgba(117, 217, 190, 0.08); }
+.invitation-create-form small { grid-column: 1 / -1; color: #607087; font-size: 9px; }
+.invitation-token { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 11px; border: 1px solid rgba(116, 226, 194, 0.22); border-radius: 6px; background: rgba(116, 226, 194, 0.06); }
+.invitation-token strong, .invitation-token span { display: block; }
+.invitation-token strong { color: #bcefe0; font-size: 10px; }
+.invitation-token span { margin-top: 5px; overflow: auto; color: #b6f1df; font-family: "DM Mono", monospace; font-size: 9px; white-space: nowrap; }
+.invitation-token button { flex: 0 0 auto; padding: 7px 9px; border: 1px solid #80dfc3; border-radius: 4px; color: #09211d; background: #80dfc3; font-size: 9px; font-weight: 700; }
+.invitation-list { margin-top: 17px; }
+.invitation-list-heading { display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.1); color: #a9b8c7; font-family: "DM Mono", monospace; font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; }
+.invitation-list-heading small { color: #607087; font-size: 8px; }
+.invitation-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; min-height: 48px; border-bottom: 1px solid rgba(148, 163, 184, 0.07); }
+.invitation-row strong, .invitation-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.invitation-row strong { color: #bdcad8; font-size: 10px; font-weight: 500; }
+.invitation-row small { margin-top: 4px; color: #617087; font-family: "DM Mono", monospace; font-size: 8px; }
+.invitation-status { padding: 4px 6px; border-radius: 4px; color: #efc475; background: rgba(233, 183, 94, 0.09); font-family: "DM Mono", monospace; font-size: 8px; text-transform: uppercase; }
+.invitation-status-accepted { color: #7fd9bd; background: rgba(116, 226, 194, 0.08); }
+.invitation-status-revoked, .invitation-status-expired { color: #fb9aaa; background: rgba(251, 113, 133, 0.08); }
+.invitation-row button { padding: 5px 8px; border: 1px solid rgba(251, 113, 133, 0.25); border-radius: 4px; color: #fb9aaa; background: transparent; font-family: "DM Mono", monospace; font-size: 8px; text-transform: uppercase; }
+.invitation-row button:hover:not(:disabled) { background: rgba(251, 113, 133, 0.08); }
+
+:root[data-theme="light"] .invitation-section { border-color: #dbe4ee; }
+:root[data-theme="light"] .invitation-accept-form label, :root[data-theme="light"] .invitation-create-form label { color: #526277; }
+:root[data-theme="light"] .invitation-accept-form input, :root[data-theme="light"] .invitation-create-form input, :root[data-theme="light"] .invitation-create-form select { border-color: #cbd8e5; color: #172235; background: #ffffff; }
+:root[data-theme="light"] .invitation-accept-form input:focus, :root[data-theme="light"] .invitation-create-form input:focus, :root[data-theme="light"] .invitation-create-form select:focus { border-color: #3db59b; box-shadow: 0 0 0 3px rgba(15, 155, 131, 0.12); }
+:root[data-theme="light"] .invitation-create-form small { color: #64748b; }
+:root[data-theme="light"] .invitation-token { border-color: #b8e4d8; background: #effbf7; }
+:root[data-theme="light"] .invitation-token strong { color: #146c5c; }
+:root[data-theme="light"] .invitation-token span { color: #146c5c; }
+:root[data-theme="light"] .invitation-token button { border-color: #087f6b; color: #ffffff; background: #087f6b; }
+:root[data-theme="light"] .invitation-list-heading { border-color: #dbe4ee; color: #526277; }
+:root[data-theme="light"] .invitation-list-heading small, :root[data-theme="light"] .invitation-row small { color: #64748b; }
+:root[data-theme="light"] .invitation-row { border-color: #e5ebf2; }
+:root[data-theme="light"] .invitation-row strong { color: #334155; }
+:root[data-theme="light"] .invitation-status { color: #9a6700; background: #fffaf0; }
+:root[data-theme="light"] .invitation-status-accepted { color: #087f6b; background: #effbf7; }
+:root[data-theme="light"] .invitation-status-revoked, :root[data-theme="light"] .invitation-status-expired { color: #be123c; background: #fff1f2; }
+
+@media (max-width: 980px) {
+  .invitation-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .invitation-create-form { grid-template-columns: 1fr 1fr; }
+  .invitation-create-form .member-add-button, .invitation-create-form small { grid-column: 1 / -1; }
+}
+
+@media (max-width: 560px) {
+  .invitation-accept-form, .invitation-create-form { grid-template-columns: 1fr; }
+  .invitation-create-form .member-add-button, .invitation-create-form small { grid-column: auto; }
+  .invitation-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .invitation-row button { grid-column: 2; }
+}

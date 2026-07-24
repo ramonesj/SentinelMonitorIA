@@ -12,10 +12,13 @@ from sqlalchemy.orm import selectinload
 
 from src.database.database import get_db_session
 from src.services.auth import auth_service
+from src.services.organizations import accept_organization_invitation, require_member_manager
 from src.models.organization import Organization
 from src.models.user import Token, User, UserOrganization
 from src.schemas.auth import (
     AuthResponseSchema,
+    OrganizationInvitationAcceptResponseSchema,
+    OrganizationInvitationAcceptSchema,
     LoginRequestSchema,
     PasswordChangeSchema,
     TokenCreateSchema,
@@ -246,6 +249,8 @@ async def create_api_key(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Create a long-lived API key for telemetry agents."""
+    if token_data.organization_id:
+        await require_member_manager(db, user, token_data.organization_id)
     return await auth_service.create_api_key(
         db,
         user.id,
@@ -308,4 +313,27 @@ async def rotate_api_key(
         rotate_data,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
+    )
+
+
+@router.post(
+    "/invitations/accept",
+    response_model=OrganizationInvitationAcceptResponseSchema,
+)
+async def accept_invitation(
+    invitation_data: OrganizationInvitationAcceptSchema,
+    user: User = Depends(get_current_user_record),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Accept a one-time invitation for the authenticated matching email."""
+    _, organization, membership = await accept_organization_invitation(
+        db,
+        invitation_data.token,
+        user,
+    )
+    return OrganizationInvitationAcceptResponseSchema(
+        organization_id=organization.id,
+        organization_name=organization.name,
+        role=membership.role,
+        status="accepted",
     )

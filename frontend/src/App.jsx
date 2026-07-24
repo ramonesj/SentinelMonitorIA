@@ -4,9 +4,20 @@ import codeFacilitoLogo from "../../Imagenes/bu.png";
 import peruFlag from "../../Imagenes/peru.png";
 import venezuelaFlag from "../../Imagenes/bandeira-venezuela-flag-0.png";
 import { API_BASE_URL, fetchDashboardData } from "./api";
-import { clearSession, createApiKey, listApiKeys, login, logout, readSession, register, restoreSession, revokeApiKey, rotateApiKey } from "./auth";
+import { clearSession, createApiKey, listApiKeys, listOrganizationMembers, addOrganizationMember, updateOrganizationMember, removeOrganizationMember, createOrganizationInvitation, listOrganizationInvitations, revokeOrganizationInvitation, acceptOrganizationInvitation, login, logout, readSession, register, restoreSession, revokeApiKey, rotateApiKey } from "./auth";
 
 const REFRESH_INTERVAL_MS = 30000;
+const THEME_STORAGE_KEY = "sentinelmonitoria.theme";
+
+function getInitialTheme() {
+  try {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (storedTheme === "light" || storedTheme === "dark") return storedTheme;
+  } catch {
+    // Fall back to the system preference when storage is unavailable.
+  }
+  return window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
 
 const serviceConfig = [
   { key: "database", label: "PostgreSQL", code: "PG", description: "Data layer" },
@@ -171,6 +182,7 @@ function AuthLoading() {
 function IntegrationPanel({ session }) {
   const user = session.user || {};
   const organization = user.organizations?.[0];
+  const canManageOrganization = organization?.role === "admin" || organization?.role === "manager";
   const [tokens, setTokens] = useState([]);
   const [form, setForm] = useState({ name: "Local telemetry agent", expiresInDays: "30" });
   const [generatedToken, setGeneratedToken] = useState("");
@@ -198,6 +210,7 @@ function IntegrationPanel({ session }) {
 
   const submit = async (event) => {
     event.preventDefault();
+    if (!organization || !canManageOrganization) return;
     setSubmitting(true);
     setGeneratedToken("");
     setCopied(false);
@@ -260,13 +273,14 @@ function IntegrationPanel({ session }) {
         <span className="integration-endpoint"><span className="pulse-dot" />{endpoint}</span>
       </div>
       {!organization && <div className="integration-warning">Tu usuario no tiene una organización asociada. Registra una organización antes de generar una API key.</div>}
+      {organization && !canManageOrganization && <div className="integration-warning">Tu rol actual es <strong>{organization.role}</strong>. Sólo los administradores y managers pueden generar API keys de la organización.</div>}
       {error && <div className="integration-error" role="alert">{error}</div>}
       <div className="integration-grid">
         <form className="integration-form" onSubmit={submit}>
           <label>Key name<input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Production agent" required /></label>
           <label>Expiration<select value={form.expiresInDays} onChange={(event) => setForm((current) => ({ ...current, expiresInDays: event.target.value }))}><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option><option value="365">365 days</option><option value="">No expiration</option></select></label>
           <div className="integration-org"><span>Organization</span><strong>{organization?.name || "Not configured"}</strong><small>{organization?.slug || "--"}</small></div>
-          <button className="integration-submit" type="submit" disabled={submitting || !organization}>{submitting ? "Generating..." : "Generate API key"}<span>→</span></button>
+          <button className="integration-submit" type="submit" disabled={submitting || !organization || !canManageOrganization}>{submitting ? "Generating..." : "Generate API key"}<span>→</span></button>
         </form>
         <div className="integration-output">
           {generatedToken ? <div className="generated-key"><div className="generated-key-heading"><strong>Copy this key now</strong><span>Shown once</span></div><div className="key-value">{generatedToken}</div><button type="button" className="copy-key-button" onClick={copyToken}>{copied ? "Copied" : "Copy API key"}</button><pre><code>{snippet}</code></pre></div> : <div className="integration-empty"><span className="integration-empty-icon">↗</span><strong>Your connection details will appear here</strong><span>Keys are displayed only once and are never stored in the browser.</span></div>}
@@ -274,6 +288,208 @@ function IntegrationPanel({ session }) {
       </div>
       <div className="key-list-heading"><span>Active API keys</span><small>{loading ? "Loading..." : `${tokens.length} configured`}</small></div>
       <div className="key-list">{tokens.length ? tokens.map((token) => <div className="key-row" key={token.id}><div><strong>{token.name}</strong><small>{token.expires_at ? `Expires ${new Date(token.expires_at).toLocaleDateString("es-ES")}` : "No expiration"}{token.last_used_at ? ` · Last used ${new Date(token.last_used_at).toLocaleDateString("es-ES")}` : " · Never used"}</small></div><button type="button" onClick={() => handleRotate(token)}>Rotate</button><button type="button" onClick={() => handleRevoke(token.id)}>Revoke</button></div>) : <span className="key-list-empty">No active keys yet.</span>}</div>
+    </section>
+  );
+}
+
+const memberRoleRank = { guest: 10, viewer: 20, member: 30, manager: 40, admin: 50 };
+
+function MembersPanel({ session }) {
+  const user = session.user || {};
+  const organization = user.organizations?.[0];
+  const currentRole = organization?.role || "guest";
+  const canManageMembers = currentRole === "admin" || currentRole === "manager";
+  const [members, setMembers] = useState([]);
+  const [form, setForm] = useState({ email: "", role: currentRole === "manager" ? "member" : "member" });
+  const [loading, setLoading] = useState(Boolean(organization));
+  const [submitting, setSubmitting] = useState(false);
+  const [updatingId, setUpdatingId] = useState("");
+  const [error, setError] = useState("");
+  const [invitations, setInvitations] = useState([]);
+  const [invitationForm, setInvitationForm] = useState({ email: "", role: "member", expires_in_days: 7 });
+  const [invitationToken, setInvitationToken] = useState("");
+  const [acceptToken, setAcceptToken] = useState("");
+  const [invitationSubmitting, setInvitationSubmitting] = useState(false);
+
+  const loadMembers = useCallback(async () => {
+    if (!organization?.id) {
+      setMembers([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await listOrganizationMembers(session, organization.id);
+      setMembers(response || []);
+      setError("");
+    } catch (requestError) {
+      setError(requestError.message || "No se pudieron cargar los miembros");
+    } finally {
+      setLoading(false);
+    }
+  }, [organization?.id, session]);
+
+  const loadInvitations = useCallback(async () => {
+    if (!organization?.id) {
+      setInvitations([]);
+      return;
+    }
+    try {
+      const response = await listOrganizationInvitations(session, organization.id);
+      setInvitations(response || []);
+    } catch (requestError) {
+      setError(requestError.message || "No se pudieron cargar las invitaciones");
+    }
+  }, [organization?.id, session]);
+
+  useEffect(() => {
+    loadMembers();
+    loadInvitations();
+  }, [loadMembers, loadInvitations]);
+
+  const createInvitation = async (event) => {
+    event.preventDefault();
+    if (!organization?.id || !canManageMembers) return;
+    setInvitationSubmitting(true);
+    setInvitationToken("");
+    setError("");
+    try {
+      const invitation = await createOrganizationInvitation(session, organization.id, invitationForm);
+      setInvitationToken(invitation.token || "");
+      setInvitationForm({ email: "", role: "member", expires_in_days: 7 });
+      await loadInvitations();
+    } catch (requestError) {
+      setError(requestError.message || "No se pudo crear la invitación");
+    } finally {
+      setInvitationSubmitting(false);
+    }
+  };
+
+  const revokeInvitation = async (invitation) => {
+    if (!window.confirm(`¿Revocar la invitación para ${invitation.email}?`)) return;
+    setInvitationSubmitting(true);
+    setError("");
+    try {
+      await revokeOrganizationInvitation(session, organization.id, invitation.id);
+      await loadInvitations();
+    } catch (requestError) {
+      setError(requestError.message || "No se pudo revocar la invitación");
+    } finally {
+      setInvitationSubmitting(false);
+    }
+  };
+
+  const acceptInvitation = async (event) => {
+    event.preventDefault();
+    if (!acceptToken.trim()) return;
+    setInvitationSubmitting(true);
+    setError("");
+    try {
+      await acceptOrganizationInvitation(session, acceptToken.trim());
+      setAcceptToken("");
+      window.alert("Invitación aceptada. La sesión se actualizará ahora.");
+      window.location.reload();
+    } catch (requestError) {
+      setError(requestError.message || "No se pudo aceptar la invitación");
+    } finally {
+      setInvitationSubmitting(false);
+    }
+  };
+
+  const copyInvitationToken = async () => {
+    try {
+      await navigator.clipboard.writeText(invitationToken);
+      window.alert("Token de invitación copiado");
+    } catch {
+      setError("No se pudo copiar el token automáticamente. Selecciónalo y cópialo manualmente.");
+    }
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!organization?.id || !canManageMembers) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      await addOrganizationMember(session, organization.id, form);
+      setForm({ email: "", role: "member" });
+      await loadMembers();
+    } catch (requestError) {
+      setError(requestError.message || "No se pudo agregar el miembro");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const updateRole = async (memberId, role) => {
+    setUpdatingId(memberId);
+    setError("");
+    try {
+      const updated = await updateOrganizationMember(session, organization.id, memberId, { role });
+      setMembers((current) => current.map((member) => member.id === memberId ? updated : member));
+    } catch (requestError) {
+      setError(requestError.message || "No se pudo actualizar el rol");
+    } finally {
+      setUpdatingId("");
+    }
+  };
+
+  const removeMember = async (member) => {
+    if (!window.confirm(`¿Retirar a ${member.full_name || member.username} de esta organización?`)) return;
+    setUpdatingId(member.id);
+    setError("");
+    try {
+      await removeOrganizationMember(session, organization.id, member.id);
+      setMembers((current) => current.filter((item) => item.id !== member.id));
+    } catch (requestError) {
+      setError(requestError.message || "No se pudo retirar el miembro");
+    } finally {
+      setUpdatingId("");
+    }
+  };
+
+  return (
+    <section className="members-panel" id="members" aria-labelledby="members-heading">
+      <div className="members-heading">
+        <div><p className="section-kicker">ORGANIZATION ACCESS</p><h2 id="members-heading">Team members</h2><p>Administra quién puede acceder a esta organización y con qué nivel de responsabilidad.</p></div>
+        <span>{loading ? "Loading..." : `${members.length} members`}</span>
+      </div>
+      {!organization && <div className="integration-warning">Tu usuario no tiene una organización asociada.</div>}
+      {error && <div className="integration-error" role="alert">{error}</div>}
+      <div className="invitation-section">
+        <div className="invitation-grid">
+          <form className="invitation-accept-form" onSubmit={acceptInvitation}>
+            <label>Aceptar invitación<input value={acceptToken} onChange={(event) => setAcceptToken(event.target.value)} placeholder="Pega aquí tu token de invitación" required /></label>
+            <button className="member-add-button" type="submit" disabled={invitationSubmitting}>{invitationSubmitting ? "Processing..." : "Accept invitation"}<span>✓</span></button>
+          </form>
+          {organization && canManageMembers && <form className="invitation-create-form" onSubmit={createInvitation}>
+            <label>Email del invitado<input type="email" value={invitationForm.email} onChange={(event) => setInvitationForm((current) => ({ ...current, email: event.target.value }))} placeholder="operator@example.com" required /></label>
+            <label>Rol<select value={invitationForm.role} onChange={(event) => setInvitationForm((current) => ({ ...current, role: event.target.value }))}>{(currentRole === "admin" ? ["admin", "manager", "member", "viewer", "guest"] : ["member", "viewer", "guest"]).map((role) => <option key={role} value={role}>{role}</option>)}</select></label>
+            <label>Duración<select value={invitationForm.expires_in_days} onChange={(event) => setInvitationForm((current) => ({ ...current, expires_in_days: Number(event.target.value) }))}><option value={1}>1 día</option><option value={7}>7 días</option><option value={14}>14 días</option><option value={30}>30 días</option></select></label>
+            <button className="member-add-button" type="submit" disabled={invitationSubmitting}>{invitationSubmitting ? "Creating..." : "Create invitation"}<span>＋</span></button>
+            <small>El token se muestra una sola vez. Envíalo al invitado mediante un canal seguro.</small>
+          </form>}
+        </div>
+        {invitationToken && <div className="invitation-token" role="status"><div><strong>Token creado — cópialo ahora</strong><span>{invitationToken}</span></div><button type="button" onClick={copyInvitationToken}>Copy token</button></div>}
+        {organization && <div className="invitation-list"><div className="invitation-list-heading"><span>Invitation history</span><small>{invitations.length} records</small></div>{invitations.length ? invitations.map((invitation) => <div className="invitation-row" key={invitation.id}><div><strong>{invitation.email}</strong><small>{invitation.role} · Expires {new Date(invitation.expires_at).toLocaleDateString("es-ES")}</small></div><span className={`invitation-status invitation-status-${invitation.status}`}>{invitation.status}</span>{canManageMembers && invitation.status === "pending" && <button type="button" onClick={() => revokeInvitation(invitation)} disabled={invitationSubmitting}>Revoke</button>}</div>) : <div className="member-list-empty">No hay invitaciones todavía.</div>}</div>}
+      </div>
+      {organization && canManageMembers && <form className="member-add-form" onSubmit={submit}>
+        <label>Email del usuario<input type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} placeholder="operator@example.com" required /></label>
+        <label>Rol<select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}>{(currentRole === "admin" ? ["admin", "manager", "member", "viewer", "guest"] : ["member", "viewer", "guest"]).map((role) => <option key={role} value={role}>{role}</option>)}</select></label>
+        <button className="member-add-button" type="submit" disabled={submitting}>{submitting ? "Adding..." : "Add member"}<span>＋</span></button>
+        <small>También puedes agregar directamente a un usuario que ya tenga una cuenta.</small>
+      </form>}
+      <div className="member-list">
+        {loading ? <div className="member-list-empty"><span className="loader" /> Loading members...</div> : members.length ? members.map((member) => {
+          const canEdit = canManageMembers && member.id !== user.id && (currentRole === "admin" || memberRoleRank[member.role] < memberRoleRank.manager);
+          return <div className="member-row" key={member.id}>
+            <div className="member-avatar">{initialsFor(member)}</div>
+            <div className="member-identity"><strong>{member.full_name || member.username}</strong><span>{member.email}</span><small>{member.username}</small></div>
+            <span className={`member-role member-role-${member.role}`}>{member.role}</span>
+            {canEdit && <div className="member-actions"><select value={member.role} onChange={(event) => updateRole(member.id, event.target.value)} disabled={updatingId === member.id} aria-label={`Rol de ${member.username}`}>{(currentRole === "admin" ? ["admin", "manager", "member", "viewer", "guest"] : ["member", "viewer", "guest"]).map((role) => <option key={role} value={role}>{role}</option>)}</select><button type="button" onClick={() => removeMember(member)} disabled={updatingId === member.id}>Remove</button></div>}
+          </div>;
+        }) : <div className="member-list-empty">No hay miembros disponibles.</div>}
+      </div>
     </section>
   );
 }
@@ -302,7 +518,7 @@ function TeamPanel() {
   );
 }
 
-function Dashboard({ session, onLogout }) {
+function Dashboard({ session, onLogout, theme, onThemeChange }) {
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -358,7 +574,7 @@ function Dashboard({ session, onLogout }) {
         <a className="brand" href="#overview" aria-label="SentinelMonitorIA inicio"><span className="brand-mark"><span>S</span></span><span className="brand-copy"><strong>Sentinel<span>Monitor</span></strong><small>Intelligence platform</small></span></a>
         <div className="sidebar-section-label">Workspace</div>
         <nav className="main-nav" aria-label="Navegación principal">
-          <a className="nav-link active" href="#overview"><NavIcon>OV</NavIcon><span>Overview</span></a><a className="nav-link" href="#services"><NavIcon>SV</NavIcon><span>Services</span></a><a className="nav-link" href="#telemetry"><NavIcon>TP</NavIcon><span>Telemetry</span></a><a className="nav-link" href="#integrations"><NavIcon>AK</NavIcon><span>Connections</span></a><a className="nav-link" href={`${API_BASE_URL}/api/v1/docs`} target="_blank" rel="noreferrer"><NavIcon>API</NavIcon><span>API explorer</span><span className="external-mark">↗</span></a>
+          <a className="nav-link active" href="#overview"><NavIcon>OV</NavIcon><span>Overview</span></a><a className="nav-link" href="#services"><NavIcon>SV</NavIcon><span>Services</span></a><a className="nav-link" href="#telemetry"><NavIcon>TP</NavIcon><span>Telemetry</span></a><a className="nav-link" href="#integrations"><NavIcon>AK</NavIcon><span>Connections</span></a><a className="nav-link" href="#members"><NavIcon>TM</NavIcon><span>Team members</span></a><a className="nav-link" href={`${API_BASE_URL}/api/v1/docs`} target="_blank" rel="noreferrer"><NavIcon>API</NavIcon><span>API explorer</span><span className="external-mark">↗</span></a>
         </nav>
         <div className="sidebar-section-label sidebar-section-lower">Resources</div>
         <nav className="main-nav"><a className="nav-link" href="http://localhost:8080" target="_blank" rel="noreferrer"><NavIcon>DB</NavIcon><span>Database</span><span className="external-mark">↗</span></a><a className="nav-link" href="http://localhost:8081" target="_blank" rel="noreferrer"><NavIcon>RD</NavIcon><span>Redis</span><span className="external-mark">↗</span></a></nav>
@@ -366,11 +582,12 @@ function Dashboard({ session, onLogout }) {
       </aside>
 
       <div className="main-viewport">
-        <header className="page-header"><div className="breadcrumb"><span>Workspace</span><b>/</b><strong>Overview</strong></div><div className="header-actions"><span className="live-pill"><span /> Live environment</span><button className="refresh-button" type="button" onClick={() => loadDashboard(true)} disabled={refreshing}><span className={refreshing ? "spin-icon" : ""}>↻</span>{refreshing ? "Updating" : "Refresh"}</button><button className="header-user-button" type="button" onClick={onLogout} title="Cerrar sesión"><span className="header-avatar">{userInitials}</span><span className="header-user-name">{displayName}</span></button></div></header>
+        <header className="page-header"><div className="breadcrumb"><span>Workspace</span><b>/</b><strong>Overview</strong></div><div className="header-actions"><span className="live-pill"><span /> Live environment</span><button className="theme-toggle" type="button" onClick={onThemeChange} aria-label={`Cambiar a modo ${theme === "dark" ? "claro" : "oscuro"}`} aria-pressed={theme === "light"} title={`Modo ${theme === "dark" ? "oscuro" : "claro"}`}><span className="theme-toggle-icon" aria-hidden="true">{theme === "dark" ? "☀" : "☾"}</span><span className="theme-toggle-label">{theme === "dark" ? "Claro" : "Oscuro"}</span></button><button className="refresh-button" type="button" onClick={() => loadDashboard(true)} disabled={refreshing}><span className={refreshing ? "spin-icon" : ""}>↻</span>{refreshing ? "Updating" : "Refresh"}</button><button className="header-user-button" type="button" onClick={onLogout} title="Cerrar sesión"><span className="header-avatar">{userInitials}</span><span className="header-user-name">{displayName}</span></button></div></header>
         <main className="dashboard-container" id="overview">
           <section className="welcome-row"><div><p className="section-kicker">{formatDate()}</p><h1>Good evening, <em>{displayName}.</em></h1><p className="welcome-copy">A clear view of your operational posture, signals and service health.</p></div><div className="last-sync"><span className="sync-line" /> Last sync <strong>{formatTime(dashboard?.fetchedAt)}</strong></div></section>
           <section className="executive-hero"><div className="hero-content"><div className="hero-tag"><span className="hero-tag-dot" /> FASE 3C / SECURE OPERATIONS</div><h2>Operational clarity<br /><span>at a glance.</span></h2><p>Monitor the pulse of your telemetry infrastructure and make better decisions with confidence.</p><div className="hero-actions"><a className="primary-action" href={`${API_BASE_URL}/api/v1/docs`} target="_blank" rel="noreferrer">Open API explorer <span>↗</span></a><a className="secondary-action" href="#services">View services</a></div></div><div className="hero-score-area"><div className="score-ring" style={{ "--score": `${healthScore}%` }}><div className="score-inner"><strong>{healthScore}</strong><span>health score</span></div></div><div className="hero-score-copy"><span className="score-status"><StatusDot status={overallStatus} />{statusLabel(overallStatus)}</span><small>Across {serviceConfig.length} core services</small></div></div><div className="hero-orbit orbit-one" /><div className="hero-orbit orbit-two" /></section>
           <IntegrationPanel session={session} />
+          <MembersPanel session={session} />
           {error && <section className="error-banner" role="alert"><div><strong>Dashboard connection issue</strong><span>{error}. Check that the backend is available at {API_BASE_URL}.</span></div><button type="button" onClick={() => loadDashboard(true)}>Retry connection</button></section>}
           {loading && !dashboard ? <section className="loading-state" aria-live="polite"><span className="loader" /> Loading operational signals...</section> : <>
             <section className="kpi-grid" aria-label="Executive summary"><KpiCard label="Events processed" value={formatNumber(telemetryService.events_processed)} detail={`${formatNumber(telemetryService.batches_received)} batches received`} accent="blue" marker="01" /><KpiCard label="Success rate" value={formatPercent(telemetryService.success_rate)} detail={`${formatNumber(sentMessages)} messages sent`} accent="mint" marker="02" /><KpiCard label="Avg. processing" value={`${Number(telemetryService.avg_processing_time_ms || 0).toFixed(1)} ms`} detail="Telemetry pipeline latency" accent="violet" marker="03" /><KpiCard label="Queue depth" value={formatNumber(totalQueueDepth)} detail={`${formatNumber(processedMessages)} messages processed`} accent="amber" marker="04" /></section>
@@ -393,6 +610,17 @@ function Dashboard({ session, onLogout }) {
 function App() {
   const [session, setSession] = useState(() => readSession());
   const [authRestoring, setAuthRestoring] = useState(() => Boolean(readSession()));
+  const [theme, setTheme] = useState(getInitialTheme);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // Continue without persistence when storage is unavailable.
+    }
+  }, [theme]);
 
   useEffect(() => {
     const storedSession = readSession();
@@ -418,7 +646,7 @@ function App() {
 
   if (authRestoring) return <AuthLoading />;
   if (!session) return <AuthScreen onAuthenticated={setSession} />;
-  return <Dashboard session={session} onLogout={handleLogout} />;
+  return <Dashboard session={session} onLogout={handleLogout} theme={theme} onThemeChange={() => setTheme((current) => current === "dark" ? "light" : "dark")} />;
 }
 
 export default App;

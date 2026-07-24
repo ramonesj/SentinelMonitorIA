@@ -142,3 +142,63 @@ export async function rotateApiKey(session, tokenId, options = {}) {
     body: JSON.stringify(options)
   });
 }
+
+
+export async function listOrganizationMembers(session, organizationId) {
+  return request(`/api/v1/organizations/${organizationId}/members`, {
+    headers: { Authorization: `Bearer ${session.access_token}` }
+  });
+}
+
+export async function addOrganizationMember(session, organizationId, memberData) {
+  return request(`/api/v1/organizations/${organizationId}/members`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify(memberData)
+  });
+}
+
+export async function updateOrganizationMember(session, organizationId, memberId, memberData) {
+  return request(`/api/v1/organizations/${organizationId}/members/${memberId}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify(memberData)
+  });
+}
+
+export async function removeOrganizationMember(session, organizationId, memberId) {
+  return request(`/api/v1/organizations/${organizationId}/members/${memberId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${session.access_token}` }
+  });
+}
+
+
+export async function createOrganizationInvitation(session, organizationId, invitationData) {
+  return request(`/api/v1/organizations/${organizationId}/invitations`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify(invitationData)
+  });
+}
+
+export async function listOrganizationInvitations(session, organizationId) {
+  return request(`/api/v1/organizations/${organizationId}/invitations`, {
+    headers: { Authorization: `Bearer ${session.access_token}` }
+  });
+}
+
+export async function revokeOrganizationInvitation(session, organizationId, invitationId) {
+  return request(`/api/v1/organizations/${organizationId}/invitations/${invitationId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${session.access_token}` }
+  });
+}
+
+export async function acceptOrganizationInvitation(session, token) {
+  return request("/api/v1/auth/invitations/accept", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ token })
+  });
+}

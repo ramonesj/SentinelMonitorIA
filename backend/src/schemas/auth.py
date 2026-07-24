@@ -655,3 +655,65 @@ class OrganizationResponseSchema(BaseModel):
         ...,
         description="Number of agents"
     )
+
+
+class OrganizationMemberCreateSchema(BaseModel):
+    """Payload for adding an existing user to an organization."""
+
+    email: EmailStr = Field(..., description="Existing user email")
+    role: UserRole = Field(default=UserRole.MEMBER, description="Organization role")
+
+
+class OrganizationMemberRoleSchema(BaseModel):
+    """Payload for changing an organization member role."""
+
+    role: UserRole = Field(..., description="New organization role")
+
+
+class OrganizationMemberResponseSchema(BaseModel):
+    """Public organization membership representation."""
+
+    id: UUID = Field(..., description="User ID")
+    email: EmailStr
+    username: str
+    full_name: Optional[str] = None
+    role: UserRole
+    is_active: bool
+    joined_at: datetime
+
+
+class OrganizationInvitationCreateSchema(BaseModel):
+    """Payload for creating an organization invitation."""
+
+    email: EmailStr = Field(..., description="Email that will receive the invitation")
+    role: UserRole = Field(default=UserRole.MEMBER, description="Role granted after acceptance")
+    expires_in_days: int = Field(default=7, ge=1, le=30, description="Invitation lifetime")
+
+
+class OrganizationInvitationResponseSchema(BaseModel):
+    """Invitation metadata; token is only present in the create response."""
+
+    id: UUID
+    email: EmailStr
+    role: UserRole
+    status: str
+    expires_at: datetime
+    created_at: datetime
+    accepted_at: Optional[datetime] = None
+    revoked_at: Optional[datetime] = None
+    token: Optional[str] = None
+
+
+class OrganizationInvitationAcceptSchema(BaseModel):
+    """Raw one-time token submitted by an authenticated invitee."""
+
+    token: str = Field(..., min_length=20, max_length=512)
+
+
+class OrganizationInvitationAcceptResponseSchema(BaseModel):
+    """Result of accepting an organization invitation."""
+
+    organization_id: UUID
+    organization_name: str
+    role: UserRole
+    status: str

@@ -4,6 +4,8 @@
   <img src="Imagenes/1769717477540.png" alt="AWS Kiro - Agentic AI Systems" width="820">
 </p>
 
+<!-- La portada oficial se conserva hasta disponer de una variante clara equivalente; el selector claro/oscuro sí está disponible en la aplicación. -->
+
 # SentinelMonitorIA
 
 ### Observabilidad local y AIOps en evolución
