@@ -3,7 +3,7 @@
 from typing import Any, Dict, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -11,6 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.database.database import get_db_session
+from src.api.v1.rate_limit import (
+    enforce_registration_rate_limit,
+    enforce_request_rate_limit,
+)
 from src.services.auth import auth_service
 from src.services.organizations import accept_organization_invitation, require_member_manager
 from src.models.organization import Organization
@@ -103,10 +107,13 @@ def _auth_response(user: User, access_token: str, refresh_token: str) -> AuthRes
 
 
 async def get_current_user_record(
+    request: Request,
+    response: Response,
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db_session),
 ) -> User:
     """Resolve an active user from an access JWT."""
+    await enforce_request_rate_limit(request, response)
     payload = auth_service.decode_token(credentials.credentials)
     if payload.get("type") != "access":
         raise HTTPException(
@@ -134,7 +141,12 @@ async def get_current_user_record(
     return user
 
 
-@router.post("/register", response_model=AuthResponseSchema, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=AuthResponseSchema,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(enforce_registration_rate_limit)],
+)
 async def register(
     request: Request,
     register_data: RegisterRequestSchema,
@@ -177,7 +189,11 @@ async def register(
     return _auth_response(loaded_user or authenticated_user, access_token, refresh_token)
 
 
-@router.post("/login", response_model=AuthResponseSchema)
+@router.post(
+    "/login",
+    response_model=AuthResponseSchema,
+    dependencies=[Depends(enforce_request_rate_limit)],
+)
 async def login(
     request: Request,
     login_data: LoginRequestSchema,
@@ -194,7 +210,10 @@ async def login(
     return _auth_response(loaded_user or user, access_token, refresh_token)
 
 
-@router.post("/refresh")
+@router.post(
+    "/refresh",
+    dependencies=[Depends(enforce_request_rate_limit)],
+)
 async def refresh(
     refresh_data: RefreshRequestSchema,
     db: AsyncSession = Depends(get_db_session),

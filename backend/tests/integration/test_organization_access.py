@@ -10,6 +10,7 @@ from sqlalchemy import select
 from src.database.database import DatabaseContext, db_manager
 from src.models import telemetry  # noqa: F401
 from src.models.organization import OrganizationInvitation
+from src.models.user import User
 from src.services.organizations import hash_invitation_token
 
 
@@ -259,3 +260,96 @@ async def test_invitation_duplicate_revocation_and_expiration(client: httpx.Asyn
         json={"token": second_data["token"]},
     )
     assert expired_accept.status_code == 409, expired_accept.text
+
+
+async def test_manager_cannot_manage_privileged_roles_but_can_manage_members(
+    client: httpx.AsyncClient,
+):
+    owner = await register_user(client, "boundary-owner")
+    manager = await register_user(client, "boundary-manager")
+    second_manager = await register_user(client, "boundary-second-manager")
+    member = await register_user(client, "boundary-member")
+    candidate = await register_user(client, "boundary-candidate")
+    organization_id = owner["organization_id"]
+    owner_headers = auth_headers(owner)
+    manager_headers = auth_headers(manager)
+
+    manager_added = await client.post(
+        f"/api/v1/organizations/{organization_id}/members",
+        headers=owner_headers,
+        json={"email": manager["email"], "role": "manager"},
+    )
+    assert manager_added.status_code == 201, manager_added.text
+
+    second_manager_added = await client.post(
+        f"/api/v1/organizations/{organization_id}/members",
+        headers=owner_headers,
+        json={"email": second_manager["email"], "role": "manager"},
+    )
+    assert second_manager_added.status_code == 201, second_manager_added.text
+
+    member_added = await client.post(
+        f"/api/v1/organizations/{organization_id}/members",
+        headers=owner_headers,
+        json={"email": member["email"], "role": "member"},
+    )
+    assert member_added.status_code == 201, member_added.text
+
+    privileged_add = await client.post(
+        f"/api/v1/organizations/{organization_id}/members",
+        headers=manager_headers,
+        json={"email": candidate["email"], "role": "manager"},
+    )
+    assert privileged_add.status_code == 403, privileged_add.text
+
+    privileged_update = await client.patch(
+        f"/api/v1/organizations/{organization_id}/members/{second_manager_added.json()['id']}",
+        headers=manager_headers,
+        json={"role": "member"},
+    )
+    assert privileged_update.status_code == 403, privileged_update.text
+
+    allowed_add = await client.post(
+        f"/api/v1/organizations/{organization_id}/members",
+        headers=manager_headers,
+        json={"email": candidate["email"], "role": "member"},
+    )
+    assert allowed_add.status_code == 201, allowed_add.text
+
+    allowed_update = await client.patch(
+        f"/api/v1/organizations/{organization_id}/members/{member_added.json()['id']}",
+        headers=manager_headers,
+        json={"role": "viewer"},
+    )
+    assert allowed_update.status_code == 200, allowed_update.text
+    assert allowed_update.json()["role"] == "viewer"
+
+
+async def test_superuser_cannot_remove_or_demote_the_last_organization_admin(
+    client: httpx.AsyncClient,
+):
+    owner = await register_user(client, "last-admin-owner")
+    superuser = await register_user(client, "last-admin-superuser")
+    organization_id = owner["organization_id"]
+    owner_id = UUID(owner["session"]["user"]["id"])
+    superuser_id = UUID(superuser["session"]["user"]["id"])
+
+    async with DatabaseContext() as db:
+        result = await db.execute(select(User).where(User.id == superuser_id))
+        stored_superuser = result.scalar_one()
+        stored_superuser.is_superuser = True
+        await db.commit()
+
+    superuser_headers = auth_headers(superuser)
+    demoted = await client.patch(
+        f"/api/v1/organizations/{organization_id}/members/{owner_id}",
+        headers=superuser_headers,
+        json={"role": "member"},
+    )
+    assert demoted.status_code == 409, demoted.text
+
+    removed = await client.delete(
+        f"/api/v1/organizations/{organization_id}/members/{owner_id}",
+        headers=superuser_headers,
+    )
+    assert removed.status_code == 409, removed.text

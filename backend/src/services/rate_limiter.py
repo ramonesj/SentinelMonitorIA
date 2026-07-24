@@ -4,7 +4,6 @@ Uses Redis for distributed rate limiting
 """
 
 from typing import Optional, Tuple, Dict, Any
-from datetime import timedelta
 from uuid import UUID
 from fastapi import HTTPException, status
 from src.config.settings import settings
@@ -34,31 +33,13 @@ class RateLimiterService:
         """
         
         try:
-            # Create rate limit key
-            rate_key = f"rate_limit:{key}"
-            
-            # Get current count
-            current = await redis_manager.get(rate_key, 0)
-            if isinstance(current, str):
-                current = int(current)
-            
-            # Increment if not at limit
-            if current < limit:
-                await redis_manager.set(
-                    rate_key,
-                    current + 1,
-                    expire=timedelta(seconds=period)
-                )
-                remaining = limit - (current + 1)
-            else:
-                remaining = 0
-            
-            # Get TTL
-            ttl = await redis_manager.client.ttl(rate_key)
+            # Increment atomically and establish the window in Redis.
+            current, ttl = await redis_manager.incr_rate_limit(key, period)
             if ttl < 0:
                 ttl = period
-            
-            allowed = current < limit
+
+            allowed = current <= limit
+            remaining = max(limit - current, 0)
             
             logger.debug(
                 "Rate limit check",
