@@ -1,9 +1,7 @@
 <div align="center">
 
 <p align="center">
-  <img src="Imagenes/cai.png" alt="Hackathon Kiro" width="120" height="120">
-  &nbsp;&nbsp;&nbsp;
-  <img src="Imagenes/bu.png" alt="Código Facilito" width="210" height="75">
+  <img src="Imagenes/1769717477540.png" alt="AWS Kiro - Agentic AI Systems" width="820">
 </p>
 
 # SentinelMonitorIA
