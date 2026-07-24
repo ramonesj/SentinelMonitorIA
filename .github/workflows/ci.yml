@@ -62,7 +62,7 @@ jobs:
           exit 1
 
       - name: Compile backend sources
-        run: docker compose -f backend/docker-compose.yml exec -T backend python -m compileall -q src
+        run: docker compose -f backend/docker-compose.yml exec -T backend sh -c "rm -rf /tmp/sentinel-compile && cp -R src /tmp/sentinel-compile && python -m compileall -q /tmp/sentinel-compile"
 
       - name: Run backend test suite
         run: docker compose -f backend/docker-compose.yml exec -T backend pytest -q
