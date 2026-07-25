@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SentinelMonitorIA · Manual Ejecutivo</title>
+  <style>
+    @page { size: A4; margin: 15mm 14mm 17mm 14mm; }
+    :root {
+      --navy: #0b1f33;
+      --navy-2: #123b5d;
+      --teal: #0b8f91;
+      --teal-dark: #076568;
+      --gold: #d8a34e;
+      --ink: #1b2b3a;
+      --muted: #607080;
+      --paper: #f5f8fa;
+      --line: #d9e3ea;
+      --white: #ffffff;
+      --success: #18794e;
+      --warning: #9a6511;
+      --danger: #a83b3b;
+      --code: #102335;
+    }
+    * { box-sizing: border-box; }
+    html { background: #dfe7ec; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--white);
+      font-family: "Segoe UI", "Aptos", Arial, sans-serif;
+      font-size: 10.2pt;
+      line-height: 1.47;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    @media screen {
+      body { max-width: 210mm; margin: 12px auto; box-shadow: 0 12px 50px rgba(11,31,51,.18); }
+    }
+    @media print {
+      .screen-only { display: none !important; }
+      a { color: inherit; text-decoration: none; }
+    }
+    .page { min-height: 265mm; position: relative; page-break-after: always; padding: 2mm 0; }
+    .page:last-child { page-break-after: auto; }
+    .cover {
+      min-height: 265mm;
+      margin: -15mm -14mm -17mm;
+      padding: 20mm 18mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: var(--white);
+      overflow: hidden;
+      position: relative;
+      background:
+        radial-gradient(circle at 90% 15%, rgba(216,163,78,.30), transparent 28%),
+        radial-gradient(circle at 12% 90%, rgba(11,143,145,.38), transparent 32%),
+        linear-gradient(145deg, #071725 0%, #0b2740 52%, #0d5c66 100%);
+    }
+    .cover::before, .cover::after {
+      content: ""; position: absolute; border: 1px solid rgba(255,255,255,.12); border-radius: 50%;
+    }
+    .cover::before { width: 165mm; height: 165mm; right: -70mm; top: -50mm; }
+    .cover::after { width: 115mm; height: 115mm; left: -68mm; bottom: -43mm; }
+    .cover > * { position: relative; z-index: 1; }
+    .brand-row { display:flex; justify-content:space-between; align-items:center; letter-spacing:.16em; text-transform:uppercase; font-size:8pt; color:rgba(255,255,255,.72); }
+    .brand-mark { display:flex; align-items:center; gap:8px; font-weight:700; }
+    .brand-dot { width:12px; height:12px; border-radius:50%; background:var(--gold); box-shadow:0 0 0 5px rgba(216,163,78,.18); }
+    .cover-main { max-width: 150mm; }
+    .cover-logo { display:block; width: 68mm; max-height: 33mm; object-fit: contain; object-position:left center; margin: 6mm 0 12mm; border-radius: 4px; }
+    .eyebrow { color: var(--gold); font-size: 10pt; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .cover h1 { margin: 3mm 0 4mm; font-size: 34pt; line-height: 1.03; letter-spacing: -.035em; }
+    .cover h2 { margin:0; max-width: 125mm; color: rgba(255,255,255,.80); font-size: 15pt; line-height:1.35; font-weight:400; }
+    .cover-meta { display:flex; gap: 8mm; flex-wrap:wrap; padding-top: 12mm; color:rgba(255,255,255,.75); font-size:9pt; }
+    .cover-meta strong { display:block; color:var(--white); font-size:10pt; margin-bottom:1mm; }
+    .cover-footer { display:flex; justify-content:space-between; align-items:end; border-top:1px solid rgba(255,255,255,.20); padding-top:5mm; font-size:8.5pt; color:rgba(255,255,255,.70); }
+    .cover-footer strong { color:var(--white); }
+    .section-kicker { color:var(--teal); text-transform:uppercase; letter-spacing:.14em; font-weight:700; font-size:8pt; margin-bottom:2mm; }
+    h1, h2, h3, h4 { color:var(--navy); line-height:1.16; page-break-after: avoid; }
+    h1 { font-size:25pt; margin:0 0 5mm; letter-spacing:-.025em; }
+    h2 { font-size:17pt; margin: 7mm 0 3mm; padding-bottom: 2mm; border-bottom:2px solid var(--teal); }
+    h3 { font-size:12.5pt; margin: 5mm 0 2mm; color:var(--navy-2); }
+    h4 { font-size:10.5pt; margin: 4mm 0 1mm; color:var(--teal-dark); }
+    p { margin: 0 0 3mm; }
+    ul, ol { margin: 2mm 0 4mm 6mm; padding-left: 5mm; }
+    li { margin: 1.2mm 0; }
+    a { color:var(--teal-dark); text-decoration:none; border-bottom:1px solid rgba(11,143,145,.3); }
+    .lead { font-size:13pt; color:var(--navy-2); line-height:1.4; }
+    .muted { color:var(--muted); }
+    .rule { height:3px; width:25mm; background:var(--gold); margin:4mm 0 6mm; }
+    .toc { display:grid; grid-template-columns: 1fr 1fr; gap:2mm 8mm; margin-top:6mm; }
+    .toc a { display:flex; gap:4mm; padding:2.5mm 0; border-bottom:1px solid var(--line); color:var(--ink); }
+    .toc-num { width:8mm; color:var(--teal); font-weight:700; }
+    .callout { border-left:4px solid var(--teal); background:#edf7f7; padding:4mm 5mm; margin:4mm 0; border-radius:0 3px 3px 0; }
+    .callout.warning { border-color:var(--gold); background:#fff8e9; }
+    .callout.danger { border-color:var(--danger); background:#fff1f1; }
+    .callout strong { color:var(--navy); }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:4mm; }
+    .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:3mm; }
+    .card { border:1px solid var(--line); border-radius:5px; padding:4mm; background:var(--white); break-inside:avoid; }
+    .card.soft { background:var(--paper); }
+    .card h3, .card h4 { margin-top:0; }
+    .metric { font-size:20pt; font-weight:750; color:var(--teal-dark); line-height:1; margin-bottom:2mm; }
+    .metric-label { color:var(--muted); font-size:8.5pt; }
+    .step { display:grid; grid-template-columns:10mm 1fr; gap:3mm; margin:3mm 0; break-inside:avoid; }
+    .step-num { width:8mm; height:8mm; border-radius:50%; background:var(--teal); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; }
+    .step h3 { margin:0 0 1mm; }
+    pre { color:#e8f1f5; background:var(--code); border-radius:4px; padding:4mm; font: 8.4pt/1.45 Consolas, "Cascadia Code", monospace; white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; margin:3mm 0 4mm; break-inside:avoid; }
+    code { color:var(--teal-dark); background:#eaf3f4; border-radius:2px; padding:.3mm 1mm; font: .92em Consolas, monospace; }
+    pre code { color:inherit; background:transparent; padding:0; }
+    table { border-collapse:collapse; width:100%; margin:3mm 0 5mm; font-size:8.9pt; break-inside:avoid; }
+    th { text-align:left; background:var(--navy); color:white; padding:2.5mm 2.5mm; font-weight:700; }
+    td { border:1px solid var(--line); padding:2.2mm 2.5mm; vertical-align:top; }
+    tr:nth-child(even) td { background:#f7fafb; }
+    .pill { display:inline-block; background:#e7f3f3; color:var(--teal-dark); border-radius:99px; padding:1mm 2.5mm; font-size:8pt; font-weight:700; }
+    .status { color:var(--success); font-weight:700; }
+    .checklist { list-style:none; margin-left:0; padding-left:0; }
+    .checklist li::before { content:"□"; color:var(--teal); font-size:13pt; margin-right:2mm; vertical-align:-1px; }
+    .architecture { border-radius:6px; border:1px solid var(--line); background:linear-gradient(135deg,#f7fbfc,#edf5f7); padding:3mm; margin:4mm 0; }
+    .architecture svg { display:block; width:100%; height:auto; }
+    .small { font-size:8.5pt; }
+    .page-header { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); padding-bottom:2mm; margin-bottom:7mm; color:var(--muted); font-size:8pt; text-transform:uppercase; letter-spacing:.10em; }
+    .page-header strong { color:var(--teal-dark); }
+    .page-number { position:absolute; bottom:0; right:0; color:var(--muted); font-size:8pt; }
+    .footer-note { margin-top:7mm; padding-top:3mm; border-top:1px solid var(--line); color:var(--muted); font-size:8pt; }
+    .avoid { break-inside:avoid; }
+    .two-col-text { columns:2; column-gap:8mm; }
+    .two-col-text p, .two-col-text ul { break-inside:avoid; }
+    .accent { color:var(--teal-dark); }
+    #telemetry h2, #seguridad h2 { margin-top:4mm; margin-bottom:2mm; padding-bottom:1.5mm; }
+    #telemetry pre { padding:3mm; margin:2mm 0 3mm; font-size:7.8pt; line-height:1.35; }
+    #telemetry .grid-3 { gap:2mm; }
+    #telemetry .card { padding:3mm; }
+    #seguridad .checklist { margin-bottom:2mm; }
+    #seguridad .checklist li { margin:.6mm 0; }
+    #seguridad .grid-2 { gap:2.5mm; }
+    #seguridad .card { padding:3mm; }
+    #seguridad pre { padding:2.5mm; margin:2mm 0; font-size:7.5pt; line-height:1.3; }
+    #seguridad table { margin:2mm 0 3mm; font-size:8pt; }
+    #seguridad th { padding:1.8mm; }
+    #seguridad td { padding:1.6mm; }
+    @media print { .cover-logo { -webkit-print-color-adjust:exact; } }
+  </style>
+</head>
+<body>
+  <section class="page">
+    <div class="cover">
+      <div class="brand-row"><div class="brand-mark"><span class="brand-dot"></span> SentinelMonitorIA</div><div>Manual ejecutivo · Edición 1.0</div></div>
+      <div class="cover-main">
+        <img class="cover-logo" src="../../Imagenes/1769717477540.png" alt="Identidad visual de SentinelMonitorIA">
+        <div class="eyebrow">Instalación · Uso · Operación</div>
+        <h1>Observabilidad local, lista para operar.</h1>
+        <h2>Guía completa para levantar y utilizar SentinelMonitorIA en Windows con Docker Desktop, PostgreSQL, Redis, FastAPI y React/Vite.</h2>
+        <div class="rule"></div>
+        <div class="cover-meta">
+          <div><strong>Plataforma</strong>Windows 10/11 + PowerShell</div>
+          <div><strong>Modo recomendado</strong>Docker Compose integrado</div>
+          <div><strong>Estado</strong>Local validado · AWS pendiente</div>
+        </div>
+      </div>
+      <div class="cover-footer"><span>Documento operativo para equipos técnicos y ejecutivos</span><strong>SentinelMonitorIA</strong></div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="page-header"><strong>SentinelMonitorIA</strong><span>Manual ejecutivo</span></div>
+    <div class="section-kicker">Orientación</div>
+    <h1>Cómo utilizar este manual</h1>
+    <p class="lead">Este documento permite pasar de un repositorio recién clonado a una instancia local funcional, crear una identidad, emitir una API key, enviar telemetry y comprobar la salud del sistema.</p>
+    <div class="callout"><strong>Regla operativa principal.</strong> Ejecuta los comandos desde la raíz del repositorio. Elige un solo modo de frontend: manual con hot reload o Docker integrado en el puerto <code>3000</code>.</div>
+    <div class="toc">
+      <a href="#resumen"><span class="toc-num">01</span><span>Resumen ejecutivo y alcance</span></a>
+      <a href="#arquitectura"><span class="toc-num">02</span><span>Arquitectura local</span></a>
+      <a href="#requisitos"><span class="toc-num">03</span><span>Requisitos y preparación</span></a>
+      <a href="#arranque"><span class="toc-num">04</span><span>Arranque rápido</span></a>
+      <a href="#servicios"><span class="toc-num">05</span><span>Servicios y puertos</span></a>
+      <a href="#primer-uso"><span class="toc-num">06</span><span>Primer uso y autenticación</span></a>
+      <a href="#telemetry"><span class="toc-num">07</span><span>API keys y telemetry</span></a>
+      <a href="#configuracion"><span class="toc-num">08</span><span>Configuración y entornos</span></a>
+      <a href="#operacion"><span class="toc-num">09</span><span>Operación diaria</span></a>
+      <a href="#colas"><span class="toc-num">10</span><span>Redis Streams y worker</span></a>
+      <a href="#validacion"><span class="toc-num">11</span><span>Pruebas y validación</span></a>
+      <a href="#seguridad"><span class="toc-num">12</span><span>Seguridad y troubleshooting</span></a>
+      <a href="#vector"><span class="toc-num">13</span><span>Agente Vector y E2E</span></a>
+      <a href="#aws"><span class="toc-num">14</span><span>AWS y límites actuales</span></a>
+      <a href="#checklist"><span class="toc-num">15</span><span>Checklist de entrega</span></a>
+    </div>
+    <div class="footer-note">Fuente de verdad técnica: README, backend README, runbook local e informe de validación incluidos en este repositorio.</div>
+    <div class="page-number">02</div>
+  </section>
+
+  <section class="page" id="resumen">
+    <div class="page-header"><strong>01 · Resumen ejecutivo</strong><span>Alcance y capacidades</span></div>
+    <div class="section-kicker">Visión general</div>
+    <h1>Una plataforma local operable</h1>
+    <p>SentinelMonitorIA es una plataforma de observabilidad y AIOps en evolución. Su recorrido funcional validado conecta identidad, organizaciones, API keys y procesamiento de telemetry en un stack local reproducible.</p>
+    <div class="grid-3">
+      <div class="card soft"><div class="metric">01</div><div class="metric-label">Identidad y organizaciones</div><p class="small">Registro, login, refresh, logout, roles y membresías.</p></div>
+      <div class="card soft"><div class="metric">02</div><div class="metric-label">Ingesta de telemetry</div><p class="small">Métricas, logs y eventos con validación y scopes.</p></div>
+      <div class="card soft"><div class="metric">03</div><div class="metric-label">Operación visible</div><p class="small">Health checks, métricas, colas y dashboard.</p></div>
+    </div>
+    <h2>Qué está validado</h2>
+    <div class="two-col-text">
+      <ul>
+        <li>Backend FastAPI con PostgreSQL y Redis.</li>
+        <li>Frontend React/Vite manual y Docker.</li>
+        <li>Cola mock predeterminada.</li>
+        <li>Redis Streams y worker opcionales.</li>
+        <li>API keys con digest SHA-256, scopes, rotación y revocación.</li>
+        <li>Dockerfiles no-root y contextos sin `.env`.</li>
+      </ul>
+      <ul>
+        <li>19 pruebas backend correctas y 1 omitida por proveedor.</li>
+        <li>3 archivos frontend y 9 tests correctos.</li>
+        <li>Build Vite 8.1.5 correcto.</li>
+        <li>Auditoría npm sin vulnerabilidades.</li>
+        <li>Smoke checks HTTP 200.</li>
+        <li>Compose de desarrollo y local-production válido.</li>
+      </ul>
+    </div>
+    <div class="callout warning"><strong>Fuera de alcance.</strong> AWS, SQS, S3, OpenSearch, ECS, DNS, certificados y costes cloud no se validan con este manual. CloudFormation sólo se entrega como diseño offline.</div>
+    <div class="page-number">03</div>
+  </section>
+
+  <section class="page" id="arquitectura">
+    <div class="page-header"><strong>02 · Arquitectura local</strong><span>Flujo de extremo a extremo</span></div>
+    <div class="section-kicker">Diseño</div>
+    <h1>Del usuario a la persistencia</h1>
+    <p>El frontend habla con FastAPI mediante HTTP y CORS local. El backend valida sesiones y API keys, persiste en PostgreSQL y usa Redis para salud, rate limiting y colas opcionales.</p>
+    <div class="architecture">
+      <svg viewBox="0 0 900 380" role="img" aria-label="Arquitectura local de SentinelMonitorIA">
+        <defs><linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#0b8f91"/><stop offset="1" stop-color="#076568"/></linearGradient><filter id="shadow"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#0b1f33" flood-opacity=".16"/></filter></defs>
+        <rect x="30" y="35" width="250" height="110" rx="12" fill="#0b1f33" filter="url(#shadow)"/><text x="55" y="75" fill="#d8a34e" font-family="Arial" font-size="15" font-weight="bold">FRONTEND</text><text x="55" y="103" fill="white" font-family="Arial" font-size="22" font-weight="bold">React + Vite</text><text x="55" y="127" fill="#c7d8e2" font-family="Arial" font-size="14">localhost:3000</text>
+        <rect x="325" y="35" width="250" height="110" rx="12" fill="url(#g1)" filter="url(#shadow)"/><text x="350" y="75" fill="#d8a34e" font-family="Arial" font-size="15" font-weight="bold">API</text><text x="350" y="103" fill="white" font-family="Arial" font-size="22" font-weight="bold">FastAPI</text><text x="350" y="127" fill="#d4f0f0" font-family="Arial" font-size="14">localhost:8000</text>
+        <rect x="620" y="35" width="250" height="110" rx="12" fill="#123b5d" filter="url(#shadow)"/><text x="645" y="75" fill="#d8a34e" font-family="Arial" font-size="15" font-weight="bold">OBSERVABILIDAD</text><text x="645" y="103" fill="white" font-family="Arial" font-size="20" font-weight="bold">Health + Metrics</text><text x="645" y="127" fill="#c7d8e2" font-family="Arial" font-size="14">/health · /metrics</text>
+        <path d="M280 90 H325" stroke="#d8a34e" stroke-width="5"/><path d="M575 90 H620" stroke="#d8a34e" stroke-width="5"/>
+        <rect x="155" y="220" width="250" height="105" rx="12" fill="#f0f6f8" stroke="#b9d2dc" stroke-width="2"/><text x="180" y="258" fill="#076568" font-family="Arial" font-size="15" font-weight="bold">PERSISTENCIA</text><text x="180" y="286" fill="#0b1f33" font-family="Arial" font-size="22" font-weight="bold">PostgreSQL</text><text x="180" y="310" fill="#607080" font-family="Arial" font-size="14">usuarios · telemetry · sesiones</text>
+        <rect x="495" y="220" width="250" height="105" rx="12" fill="#f0f6f8" stroke="#b9d2dc" stroke-width="2"/><text x="520" y="258" fill="#076568" font-family="Arial" font-size="15" font-weight="bold">CACHE / COLAS</text><text x="520" y="286" fill="#0b1f33" font-family="Arial" font-size="22" font-weight="bold">Redis</text><text x="520" y="310" fill="#607080" font-family="Arial" font-size="14">rate limit · streams · worker</text>
+        <path d="M450 145 V185 H280 V220" fill="none" stroke="#0b8f91" stroke-width="4"/><path d="M450 145 V185 H620 V220" fill="none" stroke="#0b8f91" stroke-width="4"/>
+      </svg>
+    </div>
+    <h2>Recorrido funcional</h2>
+    <div class="step"><div class="step-num">1</div><div><h3>Identidad</h3><p>El usuario se registra, crea una organización y obtiene access/refresh tokens.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div><h3>Conexión</h3><p>Desde <strong>Connections</strong> crea una API key asociada a la organización.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div><h3>Ingesta</h3><p>Un agente envía un batch con Bearer API key a <code>/api/v1/telemetry</code>.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div><h3>Procesamiento</h3><p>El proveedor mock procesa localmente; el override Redis añade streams, ACK, reintentos y DLQ.</p></div></div>
+    <div class="page-number">04</div>
+  </section>
+
+  <section class="page" id="requisitos">
+    <div class="page-header"><strong>03 · Requisitos y preparación</strong><span>Windows 10/11</span></div>
+    <div class="section-kicker">Preparación</div>
+    <h1>Antes de abrir la aplicación</h1>
+    <div class="grid-2">
+      <div class="card"><h3>Software</h3><ul><li>Docker Desktop con engine iniciado.</li><li>Docker Compose v2.</li><li>PowerShell.</li><li>Node.js + npm para frontend manual.</li><li>Git opcional.</li></ul></div>
+      <div class="card"><h3>Puertos</h3><ul><li><code>3000</code> frontend.</li><li><code>8000</code> API.</li><li><code>5432</code> PostgreSQL.</li><li><code>6379</code> Redis.</li><li><code>8080/8081</code> herramientas.</li></ul></div>
+    </div>
+    <h2>Clonar y comprobar Docker</h2>
+    <pre><code>git clone https://github.com/ramonesj/SentinelMonitorIA.git
+Set-Location SentinelMonitorIA
+./scripts/check-docker.ps1</code></pre>
+    <p>El script comprueba CLI, Compose, daemon, WSL y ejecuta un contenedor de prueba. Si Docker no aparece en el PATH:</p>
+    <pre><code>$env:Path = "$env:LOCALAPPDATA/Programs/DockerDesktop/resources/bin;$env:Path"
+docker --version
+docker compose version
+docker info</code></pre>
+    <div class="callout danger"><strong>No versionar secretos.</strong> Los archivos `backend/.env`, `.env.local-production` y cualquier token deben permanecer locales. Los `.dockerignore` excluyen estos archivos de los builds.</div>
+    <div class="page-number">05</div>
+  </section>
+
+  <section class="page" id="arranque">
+    <div class="page-header"><strong>04 · Arranque rápido</strong><span>Ruta recomendada</span></div>
+    <div class="section-kicker">Operación inicial</div>
+    <h1>Levantar el sistema en minutos</h1>
+    <h2>Opción A · Stack completo en Docker</h2>
+    <div class="step"><div class="step-num">1</div><div><h3>Construir e iniciar</h3><pre><code>./scripts/start-local.ps1 -Build -Frontend</code></pre></div></div>
+    <div class="step"><div class="step-num">2</div><div><h3>Esperar servicios saludables</h3><pre><code>docker compose -f backend/docker-compose.yml -f backend/docker-compose.frontend.yml ps</code></pre></div></div>
+    <div class="step"><div class="step-num">3</div><div><h3>Ejecutar smoke checks</h3><pre><code>./scripts/test-local.ps1 -RequireFrontend</code></pre></div></div>
+    <div class="step"><div class="step-num">4</div><div><h3>Abrir la interfaz</h3><p><a href="http://localhost:3000">http://localhost:3000</a></p></div></div>
+    <div class="callout warning"><strong>Puerto 3000.</strong> Si existe un Vite manual activo, detenlo con <code>Ctrl+C</code> antes de iniciar `sentinel-frontend`.</div>
+    <h2>Opción B · Backend Docker + frontend manual</h2>
+    <pre><code>./scripts/start-local.ps1 -Build
+Push-Location frontend
+npm ci
+npm run dev
+Pop-Location</code></pre>
+    <p>Usa esta opción si estás desarrollando componentes React y necesitas hot reload. El backend continúa en Docker y el navegador se conecta a `http://localhost:8000`.</p>
+    <h2>Detener sin borrar datos</h2>
+    <pre><code>docker compose -f backend/docker-compose.yml down</code></pre>
+    <div class="page-number">06</div>
+  </section>
+
+  <section class="page" id="servicios">
+    <div class="page-header"><strong>05 · Servicios y puertos</strong><span>Mapa operativo</span></div>
+    <div class="section-kicker">Referencia rápida</div>
+    <h1>Dónde encontrar cada componente</h1>
+    <table><thead><tr><th>Componente</th><th>Dirección</th><th>Función</th><th>Modo</th></tr></thead><tbody>
+      <tr><td>Frontend</td><td><code>localhost:3000</code></td><td>Login, dashboard y Connections</td><td>Manual o Docker</td></tr>
+      <tr><td>Backend</td><td><code>localhost:8000</code></td><td>Auth, health y telemetry</td><td>Docker</td></tr>
+      <tr><td>Swagger / OpenAPI</td><td><code>/api/v1/docs</code></td><td>Exploración de API</td><td>Development</td></tr>
+      <tr><td>PostgreSQL</td><td><code>localhost:5432</code></td><td>Usuarios, organizaciones y telemetry</td><td>Docker</td></tr>
+      <tr><td>Redis</td><td><code>localhost:6379</code></td><td>Cache, rate limit y colas</td><td>Docker</td></tr>
+      <tr><td>Adminer</td><td><code>localhost:8080</code></td><td>Gestión de PostgreSQL</td><td>Opcional local</td></tr>
+      <tr><td>Redis Commander</td><td><code>localhost:8081</code></td><td>Gestión de Redis</td><td>Opcional local</td></tr>
+      <tr><td>Metrics</td><td><code>/metrics</code></td><td>Formato Prometheus</td><td>Backend</td></tr>
+    </tbody></table>
+    <h2>Checks esenciales</h2>
+    <pre><code>Invoke-RestMethod http://localhost:8000/health
+Invoke-RestMethod http://localhost:8000/api/v1/health/liveness
+Invoke-RestMethod http://localhost:8000/api/v1/health/readiness
+Invoke-RestMethod http://localhost:8000/api/v1/telemetry/health
+Invoke-RestMethod http://localhost:8000/api/v1/telemetry/stats
+Invoke-WebRequest http://localhost:3000/ -UseBasicParsing</code></pre>
+    <div class="grid-3"><div class="card soft"><h4>Healthy</h4><p class="small">PostgreSQL, Redis y telemetry disponibles.</p></div><div class="card soft"><h4>Ready</h4><p class="small">Dependencias preparadas para recibir tráfico.</p></div><div class="card soft"><h4>HTTP 200</h4><p class="small">Frontend y endpoints públicos responden.</p></div></div>
+    <div class="page-number">07</div>
+  </section>
+
+  <section class="page" id="primer-uso">
+    <div class="page-header"><strong>06 · Primer uso</strong><span>Identidad y dashboard</span></div>
+    <div class="section-kicker">Experiencia de usuario</div>
+    <h1>Crear la primera conexión</h1>
+    <div class="step"><div class="step-num">1</div><div><h3>Crear cuenta</h3><p>En el login, seleccionar <strong>Create account</strong> y completar nombre, username, email, contraseña y organización.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div><h3>Iniciar sesión</h3><p>El backend entrega access y refresh token; el frontend restaura la sesión y renueva el access token cuando corresponde.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div><h3>Revisar salud</h3><p>El dashboard consulta `/health`, telemetry health, telemetry stats y `/metrics`.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div><h3>Abrir Connections</h3><p>Ver la organización activa y crear una API key con scope `telemetry:write`.</p></div></div>
+    <div class="step"><div class="step-num">5</div><div><h3>Guardar el secreto</h3><p>Copiar la key inmediatamente. El valor completo se muestra una sola vez.</p></div></div>
+    <div class="callout danger"><strong>Protección de credenciales.</strong> No pegues API keys o JWTs en tickets, capturas, logs, código fuente o archivos versionados. La lista de keys devuelve metadata, no secretos completos.</div>
+    <h2>Roles y organizaciones</h2>
+    <p>La organización inicial se crea durante el registro. Las reglas RBAC protegen la gestión de miembros, invitaciones, roles y API keys. Un usuario fuera de una organización recibe respuestas de autorización apropiadas y no puede leer sus datos.</p>
+    <div class="grid-2"><div class="card soft"><h3>Sesión</h3><p class="small">Logout, cambio de contraseña y refresh invalidan sesiones persistidas por `jti`.</p></div><div class="card soft"><h3>API key</h3><p class="small">Digest SHA-256, expiración, scopes, rotación explícita y revocación.</p></div></div>
+    <div class="page-number">08</div>
+  </section>
+
+  <section class="page" id="telemetry">
+    <div class="page-header"><strong>07 · API keys y telemetry</strong><span>Conectar un agente</span></div>
+    <div class="section-kicker">Ingesta</div>
+    <h1>Enviar el primer batch</h1>
+    <p>Una API key necesita una organización y el scope <code>telemetry:write</code>. El batch debe incluir `metadata` y al menos una métrica, log o evento.</p>
+    <h2>Ejemplo PowerShell</h2>
+    <pre><code>$base = "http://localhost:8000"
+$apiKey = "API_KEY_COPIADA_UNA_SOLA_VEZ"
+$headers = @{
+  Authorization = "Bearer $apiKey"
+  "Content-Type" = "application/json"
+}
+$payload = @{
+  metadata = @{
+    agent_id = "agent-local-001"
+    hostname = "localhost"
+    agent_version = "1.0.0"
+    platform = "windows"
+    architecture = "x64"
+    tags = @{ environment = "local" }
+  }
+  metrics = @(
+    @{ name = "system.cpu.usage"; value = 42.5; type = "gauge"; labels = @{} }
+  )
+  logs = @()
+  events = @()
+  batch_id = "local-batch-001"
+} | ConvertTo-Json -Depth 8
+
+Invoke-RestMethod -Uri "$base/api/v1/telemetry" -Method Post `
+  -Headers $headers -Body $payload</code></pre>
+    <div class="grid-3"><div class="card"><div class="pill">202</div><h3>Aceptado</h3><p class="small">El backend aceptó el batch.</p></div><div class="card"><div class="pill">telemetry:write</div><h3>Permiso</h3><p class="small">Scope mínimo requerido para ingesta.</p></div><div class="card"><div class="pill">10.000</div><h3>Límite</h3><p class="small">Máximo total de items por batch.</p></div></div>
+    <h2>Consultar estadísticas</h2>
+    <pre><code>Invoke-RestMethod http://localhost:8000/api/v1/telemetry/health
+Invoke-RestMethod http://localhost:8000/api/v1/telemetry/stats</code></pre>
+    <h2>Rotación y revocación</h2>
+    <p>La rotación genera una replacement key y revoca la anterior. Tras revocar una key, una nueva ingesta con ese secreto debe devolver <code>401</code>. Un key sólo lectura debe devolver <code>403</code> al intentar escribir.</p>
+    <div class="page-number">09</div>
+  </section>
+
+  <section class="page" id="configuracion">
+    <div class="page-header"><strong>08 · Configuración y entornos</strong><span>Development y local-production</span></div>
+    <div class="section-kicker">Configuración</div>
+    <h1>Elegir el perfil adecuado</h1>
+    <table><thead><tr><th>Perfil</th><th>Cuándo usarlo</th><th>Características</th></tr></thead><tbody>
+      <tr><td><strong>Development</strong></td><td>Trabajo diario y debugging</td><td>Hot reload backend, DEBUG, Swagger, herramientas Adminer/Redis Commander, cola mock.</td></tr>
+      <tr><td><strong>Frontend Docker</strong></td><td>Demo integrada o arranque de una sola orden</td><td>Imagen autocontenida, usuario `node`, rebuild explícito, puerto 3000.</td></tr>
+      <tr><td><strong>Redis worker</strong></td><td>Probar durabilidad y DLQ</td><td>Redis Streams, consumer group, ACK, reintentos y worker persistente.</td></tr>
+      <tr><td><strong>Local-production</strong></td><td>Ensayar restricciones cercanas a producción</td><td>DEBUG off, Redis autenticado, Alembic, no bind mount y capacidades reducidas.</td></tr>
+    </tbody></table>
+    <h2>Variables esenciales</h2>
+    <div class="grid-2"><div class="card soft"><h3>Aplicación</h3><p><code>ENVIRONMENT</code>, <code>DEBUG</code>, <code>API_RELOAD</code>, <code>API_CORS_ORIGINS</code></p></div><div class="card soft"><h3>Seguridad</h3><p><code>SECRET_KEY</code>, <code>JWT_SECRET_KEY</code>, expiraciones y Redis password en local-production.</p></div><div class="card soft"><h3>Datos</h3><p><code>POSTGRES_HOST</code>, <code>POSTGRES_DB</code>, <code>POSTGRES_USER</code>, <code>POSTGRES_PASSWORD</code>.</p></div><div class="card soft"><h3>Cola</h3><p><code>QUEUE_PROVIDER=mock</code> por defecto; Redis Streams en override.</p></div></div>
+    <div class="callout"><strong>Importante.</strong> El campo válido es <code>ENVIRONMENT</code>; <code>APP_ENVIRONMENT</code> es histórico y no configura el backend.</div>
+    <h2>Activar local-production</h2>
+    <pre><code>Copy-Item backend/.env.local-production.example backend/.env.local-production
+# Editar y sustituir todos los placeholders
+
+docker compose --env-file backend/.env.local-production `
+  -f backend/docker-compose.local-production.yml config --quiet
+
+docker compose --env-file backend/.env.local-production `
+  -f backend/docker-compose.local-production.yml up -d --build</code></pre>
+    <div class="page-number">10</div>
+  </section>
+
+  <section class="page" id="operacion">
+    <div class="page-header"><strong>09 · Operación diaria</strong><span>Comprobar, observar y detener</span></div>
+    <div class="section-kicker">Runbook</div>
+    <h1>Rutina operativa segura</h1>
+    <h2>Estado y logs</h2>
+    <pre><code>docker compose -f backend/docker-compose.yml ps
+docker compose -f backend/docker-compose.yml logs --tail 200 backend postgres redis
+docker compose -f backend/docker-compose.yml logs -f backend
+./scripts/test-local.ps1</code></pre>
+    <h2>Parada normal</h2>
+    <pre><code>docker compose -f backend/docker-compose.yml down</code></pre>
+    <p>Esta orden conserva los volúmenes `postgres_data`, `redis_data` y `backend_logs`. Para iniciar de nuevo:</p>
+    <pre><code>./scripts/start-local.ps1</code></pre>
+    <h2>Migraciones</h2>
+    <pre><code>docker exec sentinel-backend alembic upgrade head
+docker exec sentinel-backend alembic current
+docker exec sentinel-postgres psql -U sentinel -d sentinelmonitoria -tAc "SELECT version_num FROM alembic_version;"</code></pre>
+    <h2>Limpieza destructiva</h2>
+    <pre><code>./scripts/start-local.ps1 -Clean</code></pre>
+    <div class="callout danger"><strong>Acción destructiva.</strong> `-Clean` ejecuta `down -v` y elimina usuarios, organizaciones, tokens y telemetry. No lo uses para resolver un error sin confirmar primero que puedes perder el estado local.</div>
+    <h2>Administración de datos</h2>
+    <p>Adminer usa servidor `postgres` desde la red Docker y `localhost` desde Windows. Redis Commander se conecta al servicio `redis`. Estas herramientas son de desarrollo y no deben exponerse fuera de localhost.</p>
+    <div class="page-number">11</div>
+  </section>
+
+  <section class="page" id="colas">
+    <div class="page-header"><strong>10 · Redis Streams y worker</strong><span>Procesamiento durable opcional</span></div>
+    <div class="section-kicker">Colas</div>
+    <h1>Pasar de mock a procesamiento persistente</h1>
+    <p>El proveedor mock es la ruta predeterminada. Para ensayar procesamiento durable, activar el override Redis/worker sin eliminar los volúmenes existentes.</p>
+    <pre><code>docker compose -f backend/docker-compose.yml `
+  -f backend/docker-compose.redis-worker.yml config --quiet
+
+docker compose -f backend/docker-compose.yml `
+  -f backend/docker-compose.redis-worker.yml up -d --build backend worker
+
+docker compose -f backend/docker-compose.yml `
+  -f backend/docker-compose.redis-worker.yml ps</code></pre>
+    <div class="architecture">
+      <svg viewBox="0 0 900 170" role="img" aria-label="Flujo Redis Streams y worker">
+        <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#0b8f91"/></marker></defs>
+        <rect x="15" y="45" width="180" height="70" rx="10" fill="#0b1f33"/><text x="42" y="75" fill="#d8a34e" font-family="Arial" font-size="13" font-weight="bold">FASTAPI</text><text x="42" y="98" fill="white" font-family="Arial" font-size="16">Producer</text>
+        <rect x="260" y="45" width="180" height="70" rx="10" fill="#0b8f91"/><text x="287" y="75" fill="#d8a34e" font-family="Arial" font-size="13" font-weight="bold">REDIS</text><text x="287" y="98" fill="white" font-family="Arial" font-size="16">Stream + group</text>
+        <rect x="505" y="45" width="180" height="70" rx="10" fill="#123b5d"/><text x="532" y="75" fill="#d8a34e" font-family="Arial" font-size="13" font-weight="bold">WORKER</text><text x="532" y="98" fill="white" font-family="Arial" font-size="16">ACK + retry</text>
+        <rect x="750" y="45" width="135" height="70" rx="10" fill="#f0f6f8" stroke="#0b8f91" stroke-width="2"/><text x="775" y="75" fill="#076568" font-family="Arial" font-size="13" font-weight="bold">POSTGRES</text><text x="775" y="98" fill="#0b1f33" font-family="Arial" font-size="16">Commit</text>
+        <path d="M195 80 H255" stroke="#0b8f91" stroke-width="4" marker-end="url(#arrow)"/><path d="M440 80 H500" stroke="#0b8f91" stroke-width="4" marker-end="url(#arrow)"/><path d="M685 80 H745" stroke="#0b8f91" stroke-width="4" marker-end="url(#arrow)"/>
+      </svg>
+    </div>
+    <h2>Comprobaciones</h2>
+    <pre><code>Invoke-RestMethod http://localhost:8000/api/v1/telemetry/health
+docker exec sentinel-redis redis-cli XPENDING `
+  sentinel:stream:telemetry sentinel-telemetry-workers
+docker exec sentinel-postgres psql -U sentinel -d sentinelmonitoria `
+  -c "SELECT status, count(*) FROM telemetrybatch GROUP BY status;"</code></pre>
+    <ul><li>El worker usa consumer group y recupera pendientes con `XAUTOCLAIM`.</li><li>Confirma con `XACK` después del commit PostgreSQL.</li><li>Los fallos agotados se conservan en dead-letter.</li><li>El replay DLQ es idempotente y conserva la entrada original.</li></ul>
+    <div class="callout warning"><strong>No borrar Redis completo</strong> para resolver un `429` o revisar una cola. Diagnosticar primero las claves y el stream afectados.</div>
+    <div class="page-number">12</div>
+  </section>
+
+  <section class="page" id="validacion">
+    <div class="page-header"><strong>11 · Pruebas y validación</strong><span>Calidad verificable</span></div>
+    <div class="section-kicker">Evidencia</div>
+    <h1>Demostrar que el entorno funciona</h1>
+    <h2>Frontend</h2>
+    <pre><code>Push-Location frontend
+npm ci
+npm test
+npm run build
+npm audit --audit-level=high
+Pop-Location</code></pre>
+    <h2>Backend</h2>
+    <pre><code>docker exec sentinel-backend pytest -q</code></pre>
+    <h2>Compose, smoke y formato</h2>
+    <pre><code>./scripts/test-local.ps1 -RequireFrontend
+docker compose -f backend/docker-compose.yml config --quiet
+docker compose -f backend/docker-compose.yml `
+  -f backend/docker-compose.frontend.yml config --quiet
+docker compose --env-file backend/.env.local-production.example `
+  -f backend/docker-compose.local-production.yml config --quiet
+git diff --check</code></pre>
+    <table><thead><tr><th>Prueba</th><th>Resultado validado</th></tr></thead><tbody>
+      <tr><td>Frontend tests</td><td class="status">3 archivos · 9 tests</td></tr>
+      <tr><td>Backend pytest</td><td class="status">19 correctos · 1 omitido por Redis worker</td></tr>
+      <tr><td>npm audit</td><td class="status">0 vulnerabilidades</td></tr>
+      <tr><td>Health/metrics/telemetry</td><td class="status">HTTP 200</td></tr>
+      <tr><td>Build Docker frontend</td><td class="status">Vite 8.1.5 · usuario node</td></tr>
+      <tr><td>Build Docker backend</td><td class="status">usuario sentinel</td></tr>
+    </tbody></table>
+    <p class="small muted">La prueba omitida requiere levantar el proveedor Redis Streams y el worker persistente; no representa un fallo del stack mock predeterminado.</p>
+    <div class="page-number">13</div>
+  </section>
+
+  <section class="page" id="seguridad">
+    <div class="page-header"><strong>12 · Seguridad y troubleshooting</strong><span>Protección operativa</span></div>
+    <div class="section-kicker">Seguridad</div>
+    <h1>Resolver problemas sin perder datos</h1>
+    <h2>Principios obligatorios</h2>
+    <ul class="checklist"><li>No subir `.env`, API keys, JWTs o certificados.</li><li>Cambiar secretos antes de un entorno compartido.</li><li>Usar HTTPS fuera de localhost.</li><li>No exponer Redis, Adminer, Redis Commander o Swagger fuera de desarrollo.</li><li>Mantener CORS restringido.</li><li>No imprimir tokens en logs.</li><li>Usar `docker compose down`, no `down -v`, para paradas normales.</li></ul>
+    <h2>Diagnóstico rápido</h2>
+    <div class="grid-2"><div class="card"><h3>Docker no responde</h3><pre><code>docker info
+docker compose version
+./scripts/check-docker.ps1</code></pre></div><div class="card"><h3>Backend no inicia</h3><pre><code>docker compose -f backend/docker-compose.yml logs --tail=200 backend
+docker compose -f backend/docker-compose.yml ps</code></pre></div><div class="card"><h3>Frontend no responde</h3><p class="small">Liberar el puerto 3000. Elegir manual o Docker y reconstruir con <code>-Build</code>.</p></div><div class="card"><h3>API desconectada</h3><p class="small">Comprobar <code>/health</code>, <code>VITE_API_BASE_URL</code> y CORS.</p></div></div>
+    <h2>Errores frecuentes</h2>
+    <table><thead><tr><th>Síntoma</th><th>Lectura correcta</th><th>Acción</th></tr></thead><tbody>
+      <tr><td>401 en telemetry</td><td>Key ausente, expirada, revocada o sin organización.</td><td>Crear key con `telemetry:write` y usar Bearer.</td></tr>
+      <tr><td>403 al escribir</td><td>La key sólo tiene `telemetry:read` o no pertenece a la organización.</td><td>Revisar scopes y organización.</td></tr>
+      <tr><td>429 inesperado</td><td>Rate limiter o claves Redis previas.</td><td>Diagnosticar `rate_limit:*`; no borrar Redis completo.</td></tr>
+      <tr><td>Puerto ocupado</td><td>Otro perfil o Vite usa el puerto.</td><td>Detener el proceso correcto, no eliminar volúmenes.</td></tr>
+    </tbody></table>
+    <div class="page-number">14</div>
+  </section>
+
+  <section class="page" id="vector">
+    <div class="page-header"><strong>13 · Agente Vector y E2E</strong><span>Flujo de agente</span></div>
+    <div class="section-kicker">Integración</div>
+    <h1>Validar el camino completo</h1>
+    <p>La configuración normal de Vector está orientada a Linux porque utiliza host metrics, journald, archivos y logs Docker. Para Windows + Docker existe un flujo E2E aislado con fixture.</p>
+    <div class="architecture"><svg viewBox="0 0 900 150" role="img" aria-label="Flujo E2E del agente Vector"><defs><marker id="arrow2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#d8a34e"/></marker></defs><rect x="20" y="45" width="170" height="60" rx="9" fill="#0b1f33"/><text x="52" y="81" fill="white" font-family="Arial" font-size="16">Vector</text><rect x="250" y="45" width="170" height="60" rx="9" fill="#0b8f91"/><text x="286" y="81" fill="white" font-family="Arial" font-size="16">FastAPI</text><rect x="480" y="45" width="170" height="60" rx="9" fill="#123b5d"/><text x="520" y="81" fill="white" font-family="Arial" font-size="16">Redis + worker</text><rect x="710" y="45" width="170" height="60" rx="9" fill="#f0f6f8" stroke="#0b8f91" stroke-width="2"/><text x="747" y="81" fill="#0b1f33" font-family="Arial" font-size="16">PostgreSQL</text><path d="M190 75 H245" stroke="#d8a34e" stroke-width="4" marker-end="url(#arrow2)"/><path d="M420 75 H475" stroke="#d8a34e" stroke-width="4" marker-end="url(#arrow2)"/><path d="M650 75 H705" stroke="#d8a34e" stroke-width="4" marker-end="url(#arrow2)"/></svg></div>
+    <h2>Flujo E2E aislado</h2>
+    <pre><code>./agent/scripts/generate-e2e-fixture.ps1
+docker compose -f agent/deploy/docker-compose.e2e.yml up -d --build --force-recreate
+docker exec sentinel-redis redis-cli XPENDING \
+sentinel:stream:telemetry sentinel-telemetry-workers</code></pre>
+    <p>El procedimiento completo para crear la API key, revisar los batches `processed` y repetir la prueba está en `agent/README.md`. No ejecutar el Compose auxiliar del agente junto al stack principal sin revisar puertos y redes.</p>
+    <div class="callout warning"><strong>Estado de soporte.</strong> El flujo E2E Windows + Docker está separado y validado; las fuentes host de Linux requieren un host Linux real con permisos y montajes adecuados.</div>
+    <div class="page-number">15</div>
+  </section>
+
+  <section class="page" id="aws">
+    <div class="page-header"><strong>14 · AWS y límites actuales</strong><span>Preparación futura</span></div>
+    <div class="section-kicker">Gobierno</div>
+    <h1>Qué está listo y qué falta</h1>
+    <div class="grid-2"><div class="card soft"><h3>Preparado offline</h3><ul><li>Plan de foundation.</li><li>VPC y subnets de ejemplo.</li><li>Security groups.</li><li>RDS y ElastiCache modelados.</li><li>Repositorios ECR modelados.</li><li>Parámetros de ejemplo.</li></ul></div><div class="card soft"><h3>Pendiente con cuenta</h3><ul><li>Región, CIDR y costes.</li><li>Secrets Manager e IAM.</li><li>NAT y egress.</li><li>ECS/Fargate y ALB.</li><li>Route 53, ACM y WAF.</li><li>Backups y rollback.</li></ul></div></div>
+    <p>La carpeta `infra/cloudformation/` es diseño offline. No se han creado recursos ni se han validado cuotas, costes, conectividad o políticas en una cuenta AWS.</p>
+    <h2>Validación futura</h2>
+    <pre><code>aws cloudformation validate-template \
+  --template-body file://infra/cloudformation/sentinel-monitoria-foundation.yaml</code></pre>
+    <div class="callout danger"><strong>No desplegar todavía.</strong> Antes de cualquier cuenta compartida hay que revisar secretos, costos, políticas IAM, exposición pública, backups, certificados y estrategia de rollback.</div>
+    <h2>Fuentes del repositorio</h2>
+    <ul><li><code>README.md</code>: guía general.</li><li><code>backend/README.md</code>: API y worker.</li><li><code>docs/operations/local-runbook.md</code>: operación.</li><li><code>docs/operations/local-validation-report.md</code>: evidencia.</li><li><code>docs/deployment/cloudformation-plan.md</code>: plan cloud offline.</li></ul>
+    <div class="page-number">16</div>
+  </section>
+
+  <section class="page" id="checklist">
+    <div class="page-header"><strong>15 · Checklist de entrega</strong><span>Una página para operar</span></div>
+    <div class="section-kicker">Cierre</div>
+    <h1>Checklist del operador</h1>
+    <h2>Antes de levantar</h2>
+    <ul class="checklist"><li>Docker Desktop está ejecutándose.</li><li>Los puertos requeridos están libres.</li><li>No existe un secreto que vaya a versionarse.</li><li>Se eligió frontend manual o Docker.</li></ul>
+    <h2>Después de levantar</h2>
+    <ul class="checklist"><li>PostgreSQL, Redis y backend aparecen saludables.</li><li><code>/health</code>, readiness y telemetry health responden.</li><li>Frontend responde HTTP 200.</li><li>Usuario y organización fueron creados.</li><li>API key tiene organización y `telemetry:write`.</li><li>Un batch válido devuelve `202`.</li></ul>
+    <h2>Antes de compartir</h2>
+    <ul class="checklist"><li>Secretos cambiados y fuera de Git.</li><li><code>npm audit</code> sin vulnerabilidades altas.</li><li>Tests y build correctos.</li><li><code>git diff --check</code> limpio.</li><li>AWS sigue marcado como pendiente hasta tener validación de cuenta.</li></ul>
+    <div class="callout"><strong>Comando de oro:</strong><pre><code>./scripts/test-local.ps1 -RequireFrontend</code></pre>Si todo responde correctamente, el entorno local está listo para demostración y desarrollo.</div>
+    <div class="footer-note"><strong>SentinelMonitorIA</strong> · Manual ejecutivo de instalación, uso y operación local · Edición 1.0<br>Documento generado a partir de la configuración y validaciones existentes en el repositorio.</div>
+    <div class="page-number">17</div>
+  </section>
+</body>
+</html>

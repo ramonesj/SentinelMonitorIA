@@ -967,7 +967,20 @@ Prioridad recomendada:
 8. Preparar Terraform/CDK y despliegue productivo.
 9. Endurecer secretos, HTTPS, cookies, rate limiting y almacenamiento de credenciales.
 
-## Documentación adicional
+## Manual ejecutivo y documentación adicional
+
+El manual ejecutivo reúne el flujo completo para instalar, levantar, utilizar, validar y detener SentinelMonitorIA en Windows con Docker Desktop. Incluye una edición PDF lista para distribución y sus fuentes reproducibles offline:
+
+- [Manual ejecutivo en PDF](docs/manual/SentinelMonitorIA-Manual-Ejecutivo.pdf)
+- [Fuente Markdown editable](docs/manual/SentinelMonitorIA-Manual-Ejecutivo.md)
+- [Fuente HTML/CSS para impresión](docs/manual/SentinelMonitorIA-Manual-Ejecutivo.html)
+- [Script reproducible de generación PDF](scripts/build-manual-pdf.ps1)
+
+Para regenerar el PDF con Google Chrome instalado:
+
+```powershell
+.\scripts\build-manual-pdf.ps1
+```
 
 - [Arquitectura del agente](docs/architecture/agent-architecture.md)
 - [Guía del backend](backend/README.md)
