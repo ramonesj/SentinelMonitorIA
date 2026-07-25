@@ -1,6 +1,6 @@
-# SentinelMonitorIA Backend
+# SentinelMonitorIA Backend — Telemetry, AIOps y alertas
 
-Servicio FastAPI para autenticación, health checks, métricas e ingestión local de telemetry. La guía principal del proyecto está en [../README.md](../README.md); este archivo se concentra en el backend.
+Servicio FastAPI para autenticación, health checks, métricas, ingestión local de telemetry, análisis asíncrono y notificaciones. La guía principal del proyecto está en [../README.md](../README.md); este archivo se concentra en el backend.
 
 ## Estado
 
@@ -13,12 +13,17 @@ Implementado para desarrollo local:
 - API keys persistidas con digest SHA-256, scopes, rotación explícita y revocación.
 - Rate limiter, cola mock predeterminada y Redis Streams local opcional.
 - Worker persistente de telemetry con consumer group, ACK, reintentos y dead-letter.
+- Worker de análisis IA con reglas de CPU, memoria, logs y eventos; Ollama/Bedrock opcionales.
+- Modelos persistentes `AIAnalysis`, `Alert` y `NotificationDelivery` con deduplicación y acknowledge.
+- Worker de notificaciones con log, SMTP, webhooks, Slack, Discord, Teams y WebSocket.
+- Chatbot autenticado y acotado por organización en `POST /api/v1/chat`, con proveedor local de reglas y contrato preparado para un adaptador Lex + Bedrock.
 - Health checks y métricas Prometheus.
 - Docker Compose de desarrollo con hot reload, override Redis/worker y frontend opcional autocontenido en Docker.
 
-Pendiente:
+Pendiente o condicionado:
 
-- SQS/S3/OpenSearch reales.
+- Knowledge Base/vector store persistente para RAG; el contexto local actual usa el batch y Bedrock acepta un Knowledge Base existente.
+- SQS/EventBridge, OpenSearch gestionado y acciones automáticas productivas.
 - Integración E2E completa del agente Vector.
 
 ## Arquitectura
@@ -30,15 +35,60 @@ Cliente web / agente
 FastAPI /api/v1
    ├── auth       usuarios, JWT y API keys
    ├── health     dependencias y recursos
-   └── telemetry  ingesta y estadísticas
+   ├── telemetry  ingesta y estadísticas
+   ├── alerts     alertas, acknowledge y WebSocket
+   └── chat       asistente operativo autenticado
         │
-   ┌────┴─────┐
-   ▼          ▼
-PostgreSQL  Redis
+   ┌────┴───────────────┐
+   ▼                    ▼
+PostgreSQL            Redis
+   │                    │
+   ├── telemetry        ├── telemetry
+   ├── AIAnalysis       ├── ai_analysis
+   ├── Alert            └── notifications
+   └── NotificationDelivery
         │
         ▼
-Queue provider: `mock` (default) o Redis Streams + worker persistente (local)
+Queue provider: `mock` (default) o Redis Streams + workers persistentes
+   ├── telemetry_worker
+   ├── ai_analysis_worker (rules/Ollama/Bedrock)
+   └── notification_worker (log/SMTP/webhooks/chat)
 ```
+
+## Flujo de IA y alertas
+
+La respuesta de `POST /api/v1/telemetry` no espera el análisis. Con Redis Streams, `telemetry_worker` persiste el batch y publica una referencia en `ai_analysis`; `ai_analysis_worker` ejecuta reglas y, si está configurado, Ollama o Bedrock; finalmente `notification_worker` entrega cada alerta una sola vez por canal.
+
+Proveedores:
+
+- `AI_PROVIDER=rules`: modo local predeterminado, sin llamadas externas.
+- `AI_PROVIDER=ollama`: explicaciones locales mediante `AI_OLLAMA_BASE_URL` y `AI_MODEL_NAME`.
+- `AI_PROVIDER=bedrock`: `AI_MODEL_ID` y el task role AWS; `AI_KNOWLEDGE_BASE_ID` es opcional.
+
+Canales soportados: `log`, `email`, `webhook`, `slack`, `discord` y `teams`. Las URLs, SMTP y secretos se configuran fuera de Git. `AI_ENABLE_ACTIONS=false` no debe cambiarse en esta primera fase.
+
+Endpoints:
+
+- `GET /api/v1/alerts`
+- `POST /api/v1/alerts/{alert_id}/acknowledge`
+- `WS /api/v1/alerts/ws` (envía un primer mensaje JSON de autenticación; el JWT no viaja en la URL)
+
+## Chatbot operativo
+
+El frontend incluye un `ChatWidget` autenticado que consulta `POST /api/v1/chat`. En local, `CHAT_PROVIDER=rules` responde sin llamadas externas usando únicamente las alertas recientes visibles para las organizaciones del usuario. La conversación se mantiene en memoria del navegador, no ejecuta acciones y devuelve fuentes allowlisted y un resumen del contexto consultado.
+
+El contrato es provider-neutral para que el mismo componente pueda conservarse en AWS. La evolución prevista es un adaptador `lex_bedrock`: Lex V2 gestionaría intenciones y parámetros estructurados, mientras Bedrock generaría explicaciones y respuestas con contexto/RAG. El backend seguirá siendo la fachada de autorización, aislamiento por organización, ejecución de operaciones permitidas y auditoría; el navegador no recibirá credenciales AWS ni llamará directamente a Lex o Bedrock.
+
+Configuración local:
+
+```env
+CHAT_PROVIDER=rules
+CHAT_CONTEXT_ALERT_LIMIT=20
+CHAT_MAX_MESSAGE_LENGTH=2000
+CHAT_ENABLE_ACTIONS=false
+```
+
+Lex, Bedrock, Knowledge Base y acciones controladas son una fase futura documentada; no están desplegados en AWS ni se activan cambiando `CHAT_PROVIDER` en esta versión. Si se selecciona otro valor localmente, el backend registra el fallback y continúa usando reglas.
 
 ## Inicio recomendado con Docker
 

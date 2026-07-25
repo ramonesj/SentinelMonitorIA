@@ -6,11 +6,11 @@
 
 <!-- La portada oficial se conserva hasta disponer de una variante clara equivalente; el selector claro/oscuro sí está disponible en la aplicación. -->
 
-# SentinelMonitorIA
+# SentinelMonitorIA — Observabilidad, inteligencia artificial y AIOps
 
-### Observabilidad local y AIOps en evolución
+### Telemetría, análisis inteligente y alertas multicanal
 
-Plataforma para autenticar usuarios, administrar organizaciones, emitir API keys y recibir telemetry de agentes mediante una API FastAPI.
+Plataforma para autenticar usuarios, administrar organizaciones, recibir telemetry de agentes, detectar señales operativas y distribuir alertas mediante una API FastAPI.
 
 <p>
   <a href="#inicio-rápido-en-windows">Inicio rápido</a> ·
@@ -18,6 +18,7 @@ Plataforma para autenticar usuarios, administrar organizaciones, emitir API keys
   <a href="#autenticación-local">Autenticación</a> ·
   <a href="#api-keys-y-conexión-de-agentes">API keys</a> ·
   <a href="#contrato-de-telemetry">Telemetry</a> ·
+  <a href="#inteligencia-y-alertas">IA y alertas</a> ·
   <a href="#roadmap">Roadmap</a>
 </p>
 
@@ -31,6 +32,23 @@ Plataforma para autenticar usuarios, administrar organizaciones, emitir API keys
 </div>
 
 > **Fuente de verdad:** esta guía describe el estado real del repositorio. Las capacidades marcadas como futuras o preparatorias no forman parte del flujo local validado.
+
+## Navegación documental
+
+La documentación centralizada está en [`docs/README.md`](docs/README.md). Desde allí se conectan el estado local, la arquitectura AWS, el diagrama editable, las alternativas CloudFormation, los costes, la seguridad, la operación y la evidencia de validación.
+
+- [Arquitectura local y AWS](docs/architecture/README.md)
+- [Diagrama AWS editable](docs/architecture/sentinelmonitoria-aws-architecture.drawio)
+- [Vista AWS en Markdown](docs/architecture/sentinelmonitoria-aws-architecture.md)
+- [Despliegue CloudFormation por fases](docs/deployment/cloudformation-phased-plan.md)
+- [Índice de infraestructura y despliegue](docs/deployment/README.md)
+- [Estimación mensual AWS](docs/deployment/aws-monthly-estimate.md)
+- [Runbook local](docs/operations/local-runbook.md)
+- [Informe de validación local](docs/operations/local-validation-report.md)
+- [Foundation CloudFormation](infra/cloudformation/README.md)
+- [CloudFormation modular](infra/cloudformation/phases/README.md)
+
+La infraestructura AWS está documentada y validada offline, pero no se han desplegado recursos AWS. La foundation monolítica y los stacks modulares son alternativas excluyentes para un mismo entorno.
 
 ## Qué es SentinelMonitorIA
 
@@ -53,9 +71,11 @@ En la práctica, permite que una persona cree una organización desde el dashboa
 | Operar el entorno | Consultar health, métricas, colas mock y servicios Docker. |
 | Trabajar localmente | Ejecutar todo con Windows, Docker Compose, PostgreSQL y Redis; sin AWS real. |
 
-### Qué todavía no representa
+### Qué representa ahora
 
-El proyecto no es aún una instalación productiva ni un sistema AIOps completo. AWS/SQS/S3, las alertas avanzadas, el análisis inteligente y la infraestructura Terraform/CDK están preparados o planificados, pero no forman parte del flujo local. La integración E2E local del agente Vector sí está validada mediante el Compose aislado documentado en [`agent/README.md`](agent/README.md).
+El núcleo local sigue siendo de desarrollo, pero ya incluye una primera capa AIOps asíncrona: reglas para detectar señales de CPU, memoria, logs y eventos; persistencia de `AIAnalysis` y `Alert`; entregas idempotentes; y canales de log, Email/SMTP, Webhooks, Slack, Discord, Teams y WebSocket. Ollama y Bedrock son proveedores opcionales para explicaciones y contexto RAG. Las acciones automáticas permanecen desactivadas.
+
+AWS/Bedrock, S3 de archivo, IAM, workers ECS y notificaciones tienen fases CloudFormation `19`–`22` preparadas y validadas offline. No forman parte de un despliegue realizado. El Knowledge Base/vector store persistente debe configurarse de forma explícita porque implica decisiones de embeddings, índice, retención y coste.
 
 ## Cómo funciona
 
@@ -91,6 +111,74 @@ flowchart LR
 
 La aplicación usa automáticamente `http://localhost:8000/api/v1/telemetry` en el entorno local. No es necesario introducir una URL arbitraria desde `Connections`; una URL personalizada será relevante cuando el backend se publique detrás de otro dominio.
 
+## Inteligencia y alertas
+
+La ingesta no espera a un modelo. Cuando se activa Redis Streams, el flujo es:
+
+```text
+POST /api/v1/telemetry
+        │
+        ▼
+worker telemetry → PostgreSQL
+        │
+        ▼
+cola ai_analysis
+        │
+        ├── reglas CPU/memoria/logs/eventos
+        ├── Ollama local o Bedrock opcional
+        └── AIAnalysis + Alert
+                    │
+                    ▼
+             cola notifications
+                    │
+                    ├── log local
+                    ├── Email/SMTP
+                    ├── Slack / Discord / Microsoft Teams
+                    ├── Webhook firmado
+                    └── WebSocket del dashboard
+```
+
+Para activar el flujo durable local:
+
+```powershell
+docker compose -f backend\docker-compose.yml -f backend\docker-compose.redis-worker.yml up -d --build backend worker ai-worker notification-worker
+```
+
+Configuración principal:
+
+| Variable | Local | AWS |
+|---|---|---|
+| `AI_PROVIDER` | `rules` o `ollama` | `rules` o `bedrock` |
+| `AI_MODEL_ID` | No requerido para reglas/Ollama | ID del modelo Bedrock aprobado |
+| `AI_KNOWLEDGE_BASE_ID` | Vacío o contexto del batch | Knowledge Base Bedrock existente opcional |
+| `NOTIFICATION_CHANNELS` | `log`, SMTP o webhooks | `log`, SES/SMTP, Slack, Discord, Teams o webhook |
+| `AI_ENABLE_ACTIONS` | `false` | `false` |
+
+Endpoints disponibles:
+
+- `GET /api/v1/alerts`: lista alertas de las organizaciones del usuario.
+- `POST /api/v1/alerts/{alert_id}/acknowledge`: reconoce una alerta sin ejecutar acciones.
+- `WS /api/v1/alerts/ws?access_token=...`: novedades de alertas para el dashboard.
+
+La guía de arquitectura y el contrato de despliegue están en [`docs/architecture/README.md`](docs/architecture/README.md) y [`docs/deployment/cloudformation-phased-plan.md`](docs/deployment/cloudformation-phased-plan.md).
+
+## Chatbot operativo
+
+El dashboard incluye un chat autenticado para consultar el contexto reciente de alertas de la organización. En local usa `CHAT_PROVIDER=rules`, no realiza llamadas externas y mantiene la conversación sólo en memoria del navegador. El endpoint `POST /api/v1/chat` devuelve respuestas normalizadas, sugerencias, fuentes allowlisted y acciones vacías porque las acciones automáticas están deshabilitadas.
+
+La interfaz está separada del proveedor para poder conservarse cuando se implemente AWS. La evolución prevista es Lex V2 para intenciones y parámetros estructurados, y Bedrock para explicaciones, respuestas generativas y RAG. El backend será la fachada que mantenga JWT, aislamiento por organización, permisos, auditoría y ejecución de acciones permitidas; el navegador no llamará directamente a servicios AWS.
+
+Configuración local:
+
+```env
+CHAT_PROVIDER=rules
+CHAT_CONTEXT_ALERT_LIMIT=20
+CHAT_MAX_MESSAGE_LENGTH=2000
+CHAT_ENABLE_ACTIONS=false
+```
+
+Lex + Bedrock, Knowledge Base y acciones controladas están preparados como evolución, pero no forman parte de un despliegue AWS realizado.
+
 ## Estado del proyecto
 
 | Área | Estado | Descripción |
@@ -100,12 +188,14 @@ La aplicación usa automáticamente `http://localhost:8000/api/v1/telemetry` en 
 | Redis | Implementado | Cache, health checks y servicios auxiliares. |
 | Cola mock / Redis Streams | Implementado localmente | `mock` sigue siendo el proveedor predeterminado; el override activa streams Redis durables. |
 | Worker de telemetry | Implementado localmente | Consumer group, recuperación de pendientes, ACK, reintentos, dead-letter y persistencia PostgreSQL. |
+| Motor IA y alertas | Implementado localmente | Reglas de anomalías, `AIAnalysis`, `Alert`, deduplicación y acknowledge autenticado; Ollama/Bedrock opcionales. |
+| Notificaciones | Implementado localmente | Worker asíncrono con log, Email/SMTP, Webhook, Slack, Discord, Teams y WebSocket. |
 | Frontend React/Vite | Implementado | Dashboard ejecutivo protegido en `http://localhost:3000`. |
 | Registro y login | Implementado | Login por username o email, JWT access/refresh y restauración de sesión. |
 | API keys | Implementado | Creación, listado, scopes, rotación explícita, revocación y validación persistida para telemetry. |
 | Ingestión telemetry | Implementado localmente | Requiere una API key asociada a una organización. |
 | Agente Vector | Validado localmente | Configuración normal Vector `0.36.0` validada por esquema; pipeline E2E aislado con fixture JSONL, API key `telemetry:write`, Redis Streams, worker y persistencia PostgreSQL. La ejecución de fuentes host/journald/Docker queda pendiente en un host Linux real. |
-| AWS/SQS/S3 | Pendiente | Hay configuración preparatoria; el flujo local usa `QUEUE_PROVIDER=mock` o Redis Streams mediante override. |
+| AWS/Bedrock/S3 | Preparado offline | Fases CloudFormation `19`–`22` para archivo IA, IAM Bedrock, workers ECS y notificaciones; no desplegado. |
 | Terraform/CDK | Pendiente | Directorios reservados para infraestructura futura. |
 | Pruebas automatizadas | Implementado localmente | Auth, API keys, contrato QueueMessage, productor/ACK, retries-DLQ y persistencia del worker Redis. |
 
@@ -740,7 +830,7 @@ La configuración normal pasa `vector validate` después de expandir sus variabl
 | Script | Uso |
 |---|---|
 | `scripts/check-docker.ps1` | Comprueba Docker Desktop, Compose, daemon, WSL y hello-world |
-| `scripts/start-local.ps1` | Inicia, reconstruye, sigue logs o limpia el stack local; `-Frontend` añade Vite en Docker |
+| `scripts/start-local.ps1` | Inicia, reconstruye, sigue logs o limpia el stack local; `-Frontend` añade Vite y `-Intelligence` añade Redis Streams, AI worker y notification worker |
 | `scripts/test-local.ps1` | Smoke check read-only de backend, observabilidad y frontend opcional |
 | `scripts/test-api.ps1` | Smoke test histórico de endpoints públicos y development |
 | `scripts/check-system.ps1` | Comprobación general antigua; puede requerir `docker-compose` legacy |
@@ -752,7 +842,9 @@ Uso de `start-local.ps1`:
 .\scripts\start-local.ps1          # iniciar backend y servicios
 .\scripts\start-local.ps1 -Build   # construir e iniciar backend y servicios
 .\scripts\start-local.ps1 -Frontend # añadir frontend Docker en localhost:3000
+.\scripts\start-local.ps1 -Intelligence # añadir Redis Streams, AI worker y notification worker
 .\scripts\start-local.ps1 -Build -Frontend # construir e iniciar todo
+.\scripts\start-local.ps1 -Build -Intelligence # construir e iniciar análisis IA y alertas
 .\scripts\start-local.ps1 -Logs    # iniciar y seguir logs
 .\scripts\start-local.ps1 -Clean   # borrar volúmenes locales
 ```

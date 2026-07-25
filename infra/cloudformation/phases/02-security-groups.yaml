@@ -1,0 +1,166 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SentinelMonitorIA phase 02: ALB, backend, PostgreSQL and Redis security groups.'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+
+Resources:
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Public HTTP and HTTPS ingress for the Application Load Balancer.
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-alb-sg
+        - Key: Purpose
+          Value: alb
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  BackendSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS backend ingress only from the ALB security group.
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-backend-sg
+        - Key: Purpose
+          Value: backend
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Private PostgreSQL ingress from ECS backend tasks.
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref BackendSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-database-sg
+        - Key: Purpose
+          Value: database
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  RedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Private Redis ingress from ECS backend and worker tasks.
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref BackendSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-redis-sg
+        - Key: Purpose
+          Value: redis
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+Outputs:
+  AlbSecurityGroupId:
+    Description: Security group for the public ALB.
+    Value: !Ref AlbSecurityGroup
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-AlbSecurityGroupId
+  BackendSecurityGroupId:
+    Description: Security group for ECS backend and worker tasks.
+    Value: !Ref BackendSecurityGroup
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-BackendSecurityGroupId
+  DatabaseSecurityGroupId:
+    Description: Security group for RDS PostgreSQL.
+    Value: !Ref DatabaseSecurityGroup
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-DatabaseSecurityGroupId
+  RedisSecurityGroupId:
+    Description: Security group for ElastiCache Redis.
+    Value: !Ref RedisSecurityGroup
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-RedisSecurityGroupId

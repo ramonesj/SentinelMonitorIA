@@ -4,11 +4,34 @@ Uses structlog for JSON logging in production
 """
 
 import logging
+import re
 import sys
 from typing import Dict, Any
 from loguru import logger as loguru_logger
 import structlog
 from src.config.settings import Environment, settings
+
+
+class SensitiveDataFilter(logging.Filter):
+    """Redact credentials before Uvicorn records reach any log handler."""
+
+    _query_secret_pattern = re.compile(
+        r"(?i)((?:[?&]|\b)(?:access_token|token|api[_-]?key)=)[^&\s\"']+"
+    )
+    _bearer_pattern = re.compile(r"(?i)(\bBearer\s+)[A-Za-z0-9._~+/=-]+")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            rendered = record.getMessage()
+        except Exception:
+            return True
+
+        redacted = self._query_secret_pattern.sub(r"\1[REDACTED]", rendered)
+        redacted = self._bearer_pattern.sub(r"\1[REDACTED]", redacted)
+        if redacted != rendered:
+            record.msg = redacted
+            record.args = ()
+        return True
 
 
 def configure_logging() -> None:
@@ -86,6 +109,16 @@ def configure_logging() -> None:
         )
     
     # Set third-party loggers
+    sensitive_filter = SensitiveDataFilter()
+    for logger_name in (
+        "uvicorn",
+        "uvicorn.access",
+        "uvicorn.error",
+        "uvicorn.protocols.websockets",
+        "uvicorn.protocols.websockets.websockets_impl",
+    ):
+        logging.getLogger(logger_name).addFilter(sensitive_filter)
+
     logging.getLogger("uvicorn.access").handlers = []
     logging.getLogger("uvicorn.error").handlers = []
     

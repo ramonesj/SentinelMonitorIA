@@ -115,17 +115,66 @@ class Settings(BaseSettings):
     rate_limit_period: int = 60  # seconds
     rate_limit_organization_requests: int = 1000
     
-    # Queue Configuration (Mock for local development)
+    # Queue Configuration
     queue_provider: str = "mock"  # mock, sqs, redis
     mock_queue_max_size: int = 10000
-    
-    # AWS Configuration (for future use)
+    ai_analysis_consumer_group: str = "sentinel-ai-analysis-workers"
+    notification_consumer_group: str = "sentinel-notification-workers"
+
+    # Intelligence and RAG
+    ai_provider: str = "rules"  # rules, ollama, bedrock
+    ai_model_id: Optional[str] = None
+    ai_model_name: str = "llama3.2"
+    ai_ollama_base_url: str = "http://localhost:11434"
+    ai_knowledge_base_id: Optional[str] = None
+    ai_log_archive_bucket: Optional[str] = None
+    ai_temperature: float = 0.2
+    ai_max_output_tokens: int = 500
+    ai_max_findings: int = 20
+    ai_request_timeout_seconds: int = 30
+    ai_enable_actions: bool = False
+    anomaly_cpu_threshold: float = 90.0
+    anomaly_memory_threshold: float = 90.0
+
+    # Chatbot conversation
+    chat_provider: str = "rules"  # rules now; lex_bedrock is a future AWS adapter
+    chat_context_alert_limit: int = 20
+    chat_max_message_length: int = 2000
+    chat_enable_actions: bool = False
+
+    # Notifications
+    notification_channels: str = "log"
+    notification_webhook_url: Optional[str] = None
+    notification_webhook_secret: Optional[str] = None
+    notification_slack_webhook_url: Optional[str] = None
+    notification_discord_webhook_url: Optional[str] = None
+    notification_teams_webhook_url: Optional[str] = None
+    notification_email_to: Optional[str] = None
+    notification_request_timeout_seconds: int = 15
+    smtp_host: Optional[str] = None
+    smtp_port: int = 587
+    smtp_username: Optional[str] = None
+    smtp_password: Optional[str] = None
+    smtp_from_email: Optional[str] = None
+    smtp_use_tls: bool = True
+    alert_websocket_poll_seconds: int = 2
+
+    @property
+    def notification_channel_list(self) -> List[str]:
+        """Return normalized notification channels without empty values."""
+        return [
+            channel.strip().lower()
+            for channel in self.notification_channels.split(",")
+            if channel.strip()
+        ] or ["log"]
+
+    # AWS Configuration
     aws_region: Optional[str] = None
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
     aws_session_token: Optional[str] = None
     
-    # SQS Configuration (for future use)
+    # SQS Configuration (reserved for a future managed queue provider)
     sqs_telemetry_queue_url: Optional[str] = None
     sqs_alerts_queue_url: Optional[str] = None
     sqs_dead_letter_queue_url: Optional[str] = None

@@ -1,151 +1,100 @@
-# SentinelMonitorIA API Test Script
-# Tests all API endpoints after system startup
+# SentinelMonitorIA API smoke script
+# Checks public API and development observability endpoints after startup.
 
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "   SentinelMonitorIA API Tests        " -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""
-
-# Base URL
-$baseUrl = "http://localhost:8000"
-
-# Test 1: Root endpoint
-Write-Host "1. Testing root endpoint..." -ForegroundColor Yellow
-try {
-    $response = Invoke-RestMethod -Uri "$baseUrl/" -Method Get
-    Write-Host "   ✓ Success: $($response.app) v$($response.version)" -ForegroundColor Green
-} catch {
-    Write-Host "   ✗ Failed: $_" -ForegroundColor Red
-}
-
-# Test 2: Health check
-Write-Host "2. Testing health endpoint..." -ForegroundColor Yellow
-try {
-    $response = Invoke-RestMethod -Uri "$baseUrl/health" -Method Get
-    Write-Host "   ✓ Health status: $($response.status)" -ForegroundColor Green
-} catch {
-    Write-Host "   ✗ Failed: $_" -ForegroundColor Red
-}
-
-# Test 3: Liveness probe
-Write-Host "3. Testing liveness probe..." -ForegroundColor Yellow
-try {
-    $response = Invoke-RestMethod -Uri "$baseUrl/health/liveness" -Method Get
-    Write-Host "   ✓ Liveness: $($response.status)" -ForegroundColor Green
-} catch {
-    Write-Host "   ✗ Failed: $_" -ForegroundColor Red
-}
-
-# Test 4: Readiness probe
-Write-Host "4. Testing readiness probe..." -ForegroundColor Yellow
-try {
-    $response = Invoke-RestMethod -Uri "$baseUrl/health/readiness" -Method Get
-    Write-Host "   ✓ Readiness: $($response.status)" -ForegroundColor Green
-} catch {
-    Write-Host "   ✗ Failed: $_" -ForegroundColor Red
-}
-
-# Test 5: Prometheus metrics
-Write-Host "5. Testing metrics endpoint..." -ForegroundColor Yellow
-try {
-    $response = Invoke-WebRequest -Uri "$baseUrl/metrics" -Method Get
-    if ($response.StatusCode -eq 200) {
-        Write-Host "   ✓ Metrics endpoint responding" -ForegroundColor Green
-    } else {
-        Write-Host "   ✗ Metrics endpoint failed: $($response.StatusCode)" -ForegroundColor Red
-    }
-} catch {
-    Write-Host "   ✗ Failed: $_" -ForegroundColor Red
-}
-
-# Test 6: Test telemetry endpoint
-Write-Host "6. Testing telemetry endpoint..." -ForegroundColor Yellow
-try {
-    $body = @{
-        test = $true
-    } | ConvertTo-Json
-    
-    $response = Invoke-RestMethod -Uri "$baseUrl/api/v1/telemetry/test" -Method Post -Body $body -ContentType "application/json"
-    Write-Host "   ✓ Telemetry test: $($response.message)" -ForegroundColor Green
-} catch {
-    Write-Host "   ✗ Failed: $_" -ForegroundColor Red
-}
-
-# Test 7: Telemetry health
-Write-Host "7. Testing telemetry health..." -ForegroundColor Yellow
-try {
-    $response = Invoke-RestMethod -Uri "$baseUrl/api/v1/telemetry/health" -Method Get
-    Write-Host "   ✓ Telemetry health: $($response.status)" -ForegroundColor Green
-} catch {
-    Write-Host "   ✗ Failed: $_" -ForegroundColor Red
-}
-
-# Test 8: Telemetry stats
-Write-Host "8. Testing telemetry stats..." -ForegroundColor Yellow
-try {
-    $response = Invoke-RestMethod -Uri "$baseUrl/api/v1/telemetry/stats" -Method Get
-    Write-Host "   ✓ Telemetry stats retrieved" -ForegroundColor Green
-} catch {
-    Write-Host "   ✗ Failed: $_" -ForegroundColor Red
-}
-
-# Test 9: Development endpoints
-Write-Host "9. Testing development endpoints..." -ForegroundColor Yellow
-try {
-    $response = Invoke-RestMethod -Uri "$baseUrl/dev/stats" -Method Get
-    Write-Host "   ✓ Development stats available" -ForegroundColor Green
-} catch {
-    Write-Host "   ⚠ Development endpoints not available (normal in production)" -ForegroundColor Yellow
-}
-
-Write-Host ""
-
-# Summary
-Write-Host "Test Summary:" -ForegroundColor Cyan
-Write-Host "-------------" -ForegroundColor Cyan
-Write-Host "Total tests: 9" -ForegroundColor White
-
-# Count successes
-$successCount = 0
-$tests = @(
-    @{Name="Root endpoint"; Expected=$true},
-    @{Name="Health check"; Expected=$true},
-    @{Name="Liveness probe"; Expected=$true},
-    @{Name="Readiness probe"; Expected=$true},
-    @{Name="Metrics endpoint"; Expected=$true},
-    @{Name="Telemetry test"; Expected=$true},
-    @{Name="Telemetry health"; Expected=$true},
-    @{Name="Telemetry stats"; Expected=$true},
-    @{Name="Dev endpoints"; Expected=$false} # Optional
+param(
+    [string]$BaseUrl = "http://localhost:8000"
 )
 
-foreach ($test in $tests) {
-    # In a real script, you'd track actual successes
-    $successCount++
+$ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
+$results = @()
+
+function Test-ApiEndpoint {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [Parameter(Mandatory = $true)]
+        [string]$Uri,
+        [ValidateSet("Get", "Post")]
+        [string]$Method = "Get",
+        [string]$Body,
+        [switch]$Optional
+    )
+
+    $status = 0
+    try {
+        $request = @{
+            Uri = $Uri
+            Method = $Method
+            UseBasicParsing = $true
+            TimeoutSec = 10
+        }
+
+        if ($PSBoundParameters.ContainsKey("Body")) {
+            $request.Body = $Body
+            $request.ContentType = "application/json"
+        }
+
+        $response = Invoke-WebRequest @request
+        $status = [int]$response.StatusCode
+        if ($status -lt 200 -or $status -ge 400) {
+            throw "HTTP $status"
+        }
+
+        $script:results += [pscustomobject]@{
+            Name = $Name
+            Passed = $true
+            Optional = [bool]$Optional
+        }
+        Write-Host ("PASS {0}: HTTP {1}" -f $Name, $status) -ForegroundColor Green
+    }
+    catch {
+        $message = if ($status -gt 0) { "HTTP $status" } else { "request failed" }
+        $script:results += [pscustomobject]@{
+            Name = $Name
+            Passed = $false
+            Optional = [bool]$Optional
+        }
+        if ($Optional) {
+            Write-Host ("WARN {0}: {1}" -f $Name, $message) -ForegroundColor Yellow
+        }
+        else {
+            Write-Host ("FAIL {0}: {1}" -f $Name, $message) -ForegroundColor Red
+        }
+    }
 }
 
-Write-Host "Passed: $successCount/9" -ForegroundColor Green
-Write-Host ""
-
-# API Documentation link
-Write-Host "API Documentation:" -ForegroundColor Cyan
-Write-Host "------------------" -ForegroundColor Cyan
-Write-Host "Interactive Swagger UI: $baseUrl/api/v1/docs" -ForegroundColor White
-Write-Host ""
-
-# Example curl commands
-Write-Host "Example Commands:" -ForegroundColor Cyan
-Write-Host "-----------------" -ForegroundColor Cyan
-Write-Host "  # Send real telemetry (with auth token)" -ForegroundColor White
-Write-Host "  curl -X POST $baseUrl/api/v1/telemetry \`" -ForegroundColor White
-Write-Host "    -H `"Content-Type: application/json`" \`" -ForegroundColor White
-Write-Host "    -H `"Authorization: Bearer test_development_token_12345`" \`" -ForegroundColor White
-Write-Host "    -d '{`"metadata`":{`"agent_id`":`"test`"},`"metrics`":[],`"logs`":[],`"events`":[]}'" -ForegroundColor White
-Write-Host ""
-Write-Host "  # Simulate load" -ForegroundColor White
-Write-Host "  curl -X POST `"$baseUrl/api/v1/telemetry/dev/simulate-load?count=10`"" -ForegroundColor White
-Write-Host ""
-
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "   API Tests Completed                " -ForegroundColor Cyan
+Write-Host "   SentinelMonitorIA API Smoke Checks   " -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ("Base URL: {0}" -f $BaseUrl)
+Write-Host ""
+
+Test-ApiEndpoint -Name "Backend root" -Uri "$BaseUrl/"
+Test-ApiEndpoint -Name "Backend health" -Uri "$BaseUrl/health"
+Test-ApiEndpoint -Name "API liveness" -Uri "$BaseUrl/api/v1/health/liveness"
+Test-ApiEndpoint -Name "API readiness" -Uri "$BaseUrl/api/v1/health/readiness"
+Test-ApiEndpoint -Name "Prometheus metrics" -Uri "$BaseUrl/metrics"
+
+$testBody = "{}"
+Test-ApiEndpoint -Name "Telemetry test" -Uri "$BaseUrl/api/v1/telemetry/test" -Method Post -Body $testBody
+Test-ApiEndpoint -Name "Telemetry health" -Uri "$BaseUrl/api/v1/telemetry/health"
+Test-ApiEndpoint -Name "Telemetry stats" -Uri "$BaseUrl/api/v1/telemetry/stats"
+Test-ApiEndpoint -Name "OpenAPI docs" -Uri "$BaseUrl/api/v1/docs" -Optional
+
+$requiredFailures = @($results | Where-Object { -not $_.Passed -and -not $_.Optional }).Count
+$passed = @($results | Where-Object { $_.Passed }).Count
+$optionalWarnings = @($results | Where-Object { -not $_.Passed -and $_.Optional }).Count
+
+Write-Host ""
+Write-Host "Summary:" -ForegroundColor Cyan
+Write-Host ("  Passed: {0}" -f $passed) -ForegroundColor Green
+Write-Host ("  Required failures: {0}" -f $requiredFailures) -ForegroundColor $(if ($requiredFailures) { "Red" } else { "Green" })
+Write-Host ("  Optional warnings: {0}" -f $optionalWarnings) -ForegroundColor Yellow
+Write-Host ""
+
+if ($requiredFailures -gt 0) {
+    exit 1
+}
+
+Write-Host "API smoke checks passed." -ForegroundColor Green

@@ -1,0 +1,298 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  SentinelMonitorIA phase 22: ARM64 ECS worker for idempotent email, webhook
+  and chat-channel notification delivery.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+  WorkerImageTag:
+    Type: String
+    Default: v0.1.0
+    Description: Immutable ARM64 tag already pushed to the worker ECR repository.
+  TaskCpu:
+    Type: String
+    Default: '256'
+    AllowedValues: ['256', '512', '1024']
+  TaskMemory:
+    Type: String
+    Default: '512'
+    AllowedValues: ['512', '1024', '2048']
+  DesiredCount:
+    Type: Number
+    Default: 1
+    MinValue: 0
+    MaxValue: 10
+  NotificationChannels:
+    Type: String
+    Default: log
+    Description: Comma-separated channels such as log,email,slack,discord,teams,webhook.
+  NotificationEmailTo:
+    Type: String
+    Default: ''
+    Description: Optional recipient; configure SMTP/SES separately before enabling email.
+  SmtpHost:
+    Type: String
+    Default: ''
+  SmtpPort:
+    Type: String
+    Default: '587'
+  SmtpFromEmail:
+    Type: String
+    Default: ''
+
+Resources:
+  NotificationWorkerTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub sentinel-monitoria-${EnvironmentName}-notification-worker
+      Cpu: !Ref TaskCpu
+      Memory: !Ref TaskMemory
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: ARM64
+      ExecutionRoleArn:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-EcsTaskExecutionRoleArn'
+      TaskRoleArn:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-NotificationTaskRoleArn'
+      ContainerDefinitions:
+        - Name: notification-worker
+          Image:
+            Fn::Sub:
+              - '${RepositoryUri}:${ImageTag}'
+              - RepositoryUri:
+                  Fn::ImportValue:
+                    Fn::Sub: '${ProjectName}-${EnvironmentName}-WorkerRepositoryUri'
+                ImageTag: !Ref WorkerImageTag
+          Essential: true
+          Command: [python, -m, src.workers.notification_worker]
+          Environment:
+            - Name: ENVIRONMENT
+              Value: !Ref EnvironmentName
+            - Name: DEBUG
+              Value: 'false'
+            - Name: LOG_LEVEL
+              Value: info
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+            - Name: POSTGRES_HOST
+              Value:
+                Fn::ImportValue:
+                  Fn::Sub: '${ProjectName}-${EnvironmentName}-DatabaseEndpoint'
+            - Name: POSTGRES_PORT
+              Value: '5432'
+            - Name: POSTGRES_DB
+              Value:
+                Fn::ImportValue:
+                  Fn::Sub: '${ProjectName}-${EnvironmentName}-DatabaseName'
+            - Name: REDIS_HOST
+              Value:
+                Fn::ImportValue:
+                  Fn::Sub: '${ProjectName}-${EnvironmentName}-RedisEndpoint'
+            - Name: REDIS_PORT
+              Value: '6379'
+            - Name: REDIS_DB
+              Value: '0'
+            - Name: REDIS_STREAM_PREFIX
+              Value: sentinel:stream
+            - Name: REDIS_STREAM_MAX_LENGTH
+              Value: '10000'
+            - Name: REDIS_DEAD_LETTER_REPLAY_KEY
+              Value: sentinel:stream:dead_letter:replayed
+            - Name: NOTIFICATION_CONSUMER_GROUP
+              Value: sentinel-notification-workers
+            - Name: NOTIFICATION_CHANNELS
+              Value: !Ref NotificationChannels
+            - Name: NOTIFICATION_EMAIL_TO
+              Value: !Ref NotificationEmailTo
+            - Name: SMTP_HOST
+              Value: !Ref SmtpHost
+            - Name: SMTP_PORT
+              Value: !Ref SmtpPort
+            - Name: SMTP_FROM_EMAIL
+              Value: !Ref SmtpFromEmail
+            - Name: QUEUE_PROVIDER
+              Value: redis
+          Secrets:
+            - Name: SECRET_KEY
+              ValueFrom:
+                Fn::Sub:
+                  - '${SecretArn}:secret_key::'
+                  - SecretArn:
+                      Fn::ImportValue:
+                        Fn::Sub: '${ProjectName}-${EnvironmentName}-ApplicationSecretArn'
+            - Name: JWT_SECRET_KEY
+              ValueFrom:
+                Fn::Sub:
+                  - '${SecretArn}:jwt_secret_key::'
+                  - SecretArn:
+                      Fn::ImportValue:
+                        Fn::Sub: '${ProjectName}-${EnvironmentName}-JwtSecretArn'
+            - Name: POSTGRES_USER
+              ValueFrom:
+                Fn::Sub:
+                  - '${SecretArn}:username::'
+                  - SecretArn:
+                      Fn::ImportValue:
+                        Fn::Sub: '${ProjectName}-${EnvironmentName}-DatabaseSecretArn'
+            - Name: POSTGRES_PASSWORD
+              ValueFrom:
+                Fn::Sub:
+                  - '${SecretArn}:password::'
+                  - SecretArn:
+                      Fn::ImportValue:
+                        Fn::Sub: '${ProjectName}-${EnvironmentName}-DatabaseSecretArn'
+            - Name: REDIS_PASSWORD
+              ValueFrom:
+                Fn::Sub:
+                  - '${SecretArn}:auth_token::'
+                  - SecretArn:
+                      Fn::ImportValue:
+                        Fn::Sub: '${ProjectName}-${EnvironmentName}-RedisSecretArn'
+            - Name: NOTIFICATION_WEBHOOK_SECRET
+              ValueFrom:
+                Fn::Sub:
+                  - '${SecretArn}:webhook_secret::'
+                  - SecretArn:
+                      Fn::ImportValue:
+                        Fn::Sub: '${ProjectName}-${EnvironmentName}-NotificationSecretArn'
+            - Name: NOTIFICATION_WEBHOOK_URL
+              ValueFrom:
+                Fn::Sub:
+                  - '${SecretArn}:webhook_url::'
+                  - SecretArn:
+                      Fn::ImportValue:
+                        Fn::Sub: '${ProjectName}-${EnvironmentName}-NotificationSecretArn'
+            - Name: NOTIFICATION_SLACK_WEBHOOK_URL
+              ValueFrom:
+                Fn::Sub:
+                  - '${SecretArn}:slack_webhook_url::'
+                  - SecretArn:
+                      Fn::ImportValue:
+                        Fn::Sub: '${ProjectName}-${EnvironmentName}-NotificationSecretArn'
+            - Name: NOTIFICATION_DISCORD_WEBHOOK_URL
+              ValueFrom:
+                Fn::Sub:
+                  - '${SecretArn}:discord_webhook_url::'
+                  - SecretArn:
+                      Fn::ImportValue:
+                        Fn::Sub: '${ProjectName}-${EnvironmentName}-NotificationSecretArn'
+            - Name: NOTIFICATION_TEAMS_WEBHOOK_URL
+              ValueFrom:
+                Fn::Sub:
+                  - '${SecretArn}:teams_webhook_url::'
+                  - SecretArn:
+                      Fn::ImportValue:
+                        Fn::Sub: '${ProjectName}-${EnvironmentName}-NotificationSecretArn'
+            - Name: SMTP_USERNAME
+              ValueFrom:
+                Fn::Sub:
+                  - '${SecretArn}:smtp_username::'
+                  - SecretArn:
+                      Fn::ImportValue:
+                        Fn::Sub: '${ProjectName}-${EnvironmentName}-NotificationSecretArn'
+            - Name: SMTP_PASSWORD
+              ValueFrom:
+                Fn::Sub:
+                  - '${SecretArn}:smtp_password::'
+                  - SecretArn:
+                      Fn::ImportValue:
+                        Fn::Sub: '${ProjectName}-${EnvironmentName}-NotificationSecretArn'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group:
+                Fn::ImportValue:
+                  Fn::Sub: '${ProjectName}-${EnvironmentName}-NotificationLogGroupName'
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: notifications
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - python -c "import os; raise SystemExit(0 if os.path.exists('/proc/1/cmdline') else 1)"
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 30
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-notification-worker-task
+        - Key: Component
+          Value: notifications
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  NotificationWorkerService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub sentinel-monitoria-${EnvironmentName}-notification-worker
+      Cluster:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-EcsClusterArn'
+      TaskDefinition: !Ref NotificationWorkerTaskDefinition
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      PlatformVersion: LATEST
+      DeploymentConfiguration:
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+        MaximumPercent: 200
+        MinimumHealthyPercent: 50
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - Fn::ImportValue:
+                Fn::Sub: '${ProjectName}-${EnvironmentName}-BackendSecurityGroupId'
+          Subnets:
+            - Fn::ImportValue:
+                Fn::Sub: '${ProjectName}-${EnvironmentName}-PrivateSubnet1Id'
+            - Fn::ImportValue:
+                Fn::Sub: '${ProjectName}-${EnvironmentName}-PrivateSubnet2Id'
+      EnableECSManagedTags: true
+      PropagateTags: SERVICE
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-notification-worker-service
+        - Key: Component
+          Value: notifications
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+Outputs:
+  NotificationWorkerTaskDefinitionArn:
+    Description: Notification worker task definition ARN.
+    Value: !Ref NotificationWorkerTaskDefinition
+  NotificationWorkerServiceArn:
+    Description: Notification worker service ARN.
+    Value: !Ref NotificationWorkerService

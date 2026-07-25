@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SentinelMonitorIA phase 03: ECS execution and task IAM roles.'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+
+Resources:
+  EcsTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: ReadSentinelMonitoriaSecrets
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${ProjectName}-${EnvironmentName}-*
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-ecs-execution-role
+        - Key: Purpose
+          Value: ecs-execution
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  BackendTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-backend-task-role
+        - Key: Purpose
+          Value: backend-task
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  WorkerTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-worker-task-role
+        - Key: Purpose
+          Value: worker-task
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+Outputs:
+  EcsTaskExecutionRoleArn:
+    Description: ECS task execution role ARN.
+    Value: !GetAtt EcsTaskExecutionRole.Arn
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-EcsTaskExecutionRoleArn
+  BackendTaskRoleArn:
+    Description: Backend ECS task role ARN.
+    Value: !GetAtt BackendTaskRole.Arn
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-BackendTaskRoleArn
+  WorkerTaskRoleArn:
+    Description: Worker ECS task role ARN.
+    Value: !GetAtt WorkerTaskRole.Arn
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-WorkerTaskRoleArn

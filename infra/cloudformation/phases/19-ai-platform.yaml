@@ -1,0 +1,171 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  SentinelMonitorIA phase 19: AI archive, CloudWatch logs and least-privilege
+  task role for rules or Amazon Bedrock analysis.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+  LogRetentionInDays:
+    Type: Number
+    Default: 30
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 180, 365]
+  LogArchiveBucketName:
+    Type: String
+    Default: ''
+    Description: Optional globally unique S3 bucket name; leave empty for a generated name.
+  BedrockModelArn:
+    Type: String
+    Default: '*'
+    Description: Restrict to the selected Bedrock foundation-model ARN before production.
+  BedrockKnowledgeBaseArn:
+    Type: String
+    Default: '*'
+    Description: Existing Knowledge Base ARN; use * only for staging discovery.
+
+Conditions:
+  HasCustomBucketName: !Not [!Equals [!Ref LogArchiveBucketName, '']]
+
+Resources:
+  AiLogArchiveBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !If [HasCustomBucketName, !Ref LogArchiveBucketName, !Ref AWS::NoValue]
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireNonCurrentLogVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-ai-archive
+        - Key: Component
+          Value: ai-archive
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  AiWorkerLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /ecs/${ProjectName}/${EnvironmentName}/ai-worker
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-ai-worker-logs
+        - Key: Component
+          Value: ai-worker
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  AiTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeBedrockAndReadArchive
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource: !Ref BedrockModelArn
+              - Effect: Allow
+                Action:
+                  - bedrock:Retrieve
+                  - bedrock:RetrieveAndGenerate
+                Resource: !Ref BedrockKnowledgeBaseArn
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt AiLogArchiveBucket.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub ${AiLogArchiveBucket.Arn}/*
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-ai-task-role
+        - Key: Component
+          Value: ai-worker
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+Outputs:
+  AiLogArchiveBucketArn:
+    Description: Private S3 bucket ARN for redacted log/archive data.
+    Value: !GetAtt AiLogArchiveBucket.Arn
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-AiLogArchiveBucketArn
+  AiLogArchiveBucketName:
+    Description: Private S3 bucket name for AI context data.
+    Value: !Ref AiLogArchiveBucket
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-AiLogArchiveBucketName
+  AiTaskRoleArn:
+    Description: ECS task role for rules/Bedrock analysis.
+    Value: !GetAtt AiTaskRole.Arn
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-AiTaskRoleArn
+  AiWorkerLogGroupName:
+    Description: CloudWatch log group for the AI worker.
+    Value: !Ref AiWorkerLogGroup
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-AiWorkerLogGroupName

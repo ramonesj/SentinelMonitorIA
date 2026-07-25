@@ -1,0 +1,128 @@
+{
+  "common": {
+    "ProjectName": "SentinelMonitorIA",
+    "EnvironmentName": "staging",
+    "DeploymentDay": "2026-07-23"
+  },
+  "phaseOverrides": {
+    "00-vpc-network": {
+      "VpcCidr": "10.42.0.0/16",
+      "AvailabilityZone1": "us-east-1a",
+      "AvailabilityZone2": "us-east-1b",
+      "PublicSubnet1Cidr": "10.42.1.0/24",
+      "PublicSubnet2Cidr": "10.42.2.0/24",
+      "PrivateSubnet1Cidr": "10.42.11.0/24",
+      "PrivateSubnet2Cidr": "10.42.12.0/24"
+    },
+    "01-nat-instance": {
+      "NatInstanceType": "t4g.micro",
+      "NatAmiParameter": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64",
+      "NatRootVolumeSize": "8"
+    },
+    "02-security-groups": {},
+    "03-iam": {},
+    "04-ecr": {},
+    "05-rds": {
+      "DBName": "sentinelmonitoria",
+      "DBUsername": "sentinel",
+      "DBInstanceClass": "db.t4g.micro",
+      "DBAllocatedStorage": "20",
+      "DBBackupRetentionDays": "7",
+      "DeletionProtection": "false"
+    },
+    "06-redis": {
+      "RedisNodeType": "cache.t4g.micro",
+      "RedisSnapshotRetentionDays": "7"
+    },
+    "07-application-secrets": {},
+    "08-cloudwatch": {
+      "LogRetentionInDays": "30"
+    },
+    "09-alb": {
+      "IdleTimeoutSeconds": "60"
+    },
+    "10-ecs-cluster": {
+      "ContainerInsights": "enabled"
+    },
+    "11-ecs-backend": {
+      "BackendImageTag": "v0.1.0",
+      "TaskCpu": "256",
+      "TaskMemory": "512",
+      "DesiredCount": "1",
+      "ApiWorkers": "2",
+      "LogLevel": "info",
+      "CorsOrigins": "http://localhost:3000"
+    },
+    "12-ecs-worker": {
+      "WorkerImageTag": "v0.1.0",
+      "TaskCpu": "256",
+      "TaskMemory": "512",
+      "DesiredCount": "1"
+    },
+    "13-frontend-s3": {
+      "FrontendBucketName": ""
+    },
+    "14-cloudfront": {
+      "UseCustomDomain": "false",
+      "FrontendDomainName": "",
+      "FrontendCertificateArn": "",
+      "PriceClass": "PriceClass_100"
+    },
+    "15-route53-hosted-zone": {
+      "RootDomainName": "example.com"
+    },
+    "16-acm-certificates": {
+      "ApiDomainName": "api.example.com",
+      "FrontendDomainName": "app.example.com"
+    },
+    "17-alb-https": {
+      "EnableHttps": "false",
+      "ApiCertificateArn": ""
+    },
+    "18-route53-records": {
+      "CreateDnsRecords": "false",
+      "ApiDomainName": "api.example.com",
+      "FrontendDomainName": "app.example.com"
+    },
+    "19-ai-platform": {
+      "LogRetentionInDays": "30",
+      "LogArchiveBucketName": "",
+      "BedrockModelArn": "*",
+      "BedrockKnowledgeBaseArn": "*"
+    },
+    "20-notification-platform": {
+      "LogRetentionInDays": "30"
+    },
+    "21-ecs-ai-worker": {
+      "WorkerImageTag": "v0.1.0",
+      "TaskCpu": "512",
+      "TaskMemory": "1024",
+      "DesiredCount": "1",
+      "LogLevel": "info",
+      "AiProvider": "rules",
+      "BedrockModelId": "",
+      "BedrockKnowledgeBaseId": "",
+      "NotificationChannels": "log"
+    },
+    "22-ecs-notification-worker": {
+      "WorkerImageTag": "v0.1.0",
+      "TaskCpu": "256",
+      "TaskMemory": "512",
+      "DesiredCount": "1",
+      "NotificationChannels": "log",
+      "NotificationEmailTo": "",
+      "SmtpHost": "",
+      "SmtpPort": "587",
+      "SmtpFromEmail": ""
+    }
+  },
+  "notes": [
+    "Este archivo es una matriz de revisión; combine common con phaseOverrides antes de usar aws cloudformation deploy.",
+    "No contiene DB passwords, Redis tokens, AWS keys ni valores de secretos.",
+    "Las fases 15-18 requieren dominio real y delegación DNS; no use example.com en una cuenta real.",
+    "Construya y publique las imágenes ARM64 antes de ejecutar las fases 11, 12, 21 y 22.",
+    "La fase 19 permite reglas o Bedrock y acepta un Knowledge Base existente; no crea automáticamente un vector store.",
+    "Las URLs de canales y credenciales SMTP se cargan en las claves JSON del secreto de la fase 20 fuera de Git; no las añada a este archivo.",
+    "Mantenga AiProvider=rules y NotificationChannels=log hasta validar permisos, costes y destinos externos."
+  ]
+}

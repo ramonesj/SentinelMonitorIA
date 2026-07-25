@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  SentinelMonitorIA phase 17: optional HTTPS listener and HTTP to HTTPS
+  redirect for the phase 09 Application Load Balancer.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+  EnableHttps:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+  ApiCertificateArn:
+    Type: String
+    Default: ''
+    Description: ACM API certificate ARN; required when EnableHttps is true.
+
+Conditions:
+  HttpsEnabled: !Equals [!Ref EnableHttps, 'true']
+
+Resources:
+  HttpsListener:
+    Condition: HttpsEnabled
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-LoadBalancerArn'
+      Port: 443
+      Protocol: HTTPS
+      SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      Certificates:
+        - CertificateArn: !Ref ApiCertificateArn
+      DefaultActions:
+        - Type: forward
+          ForwardConfig:
+            TargetGroups:
+              - TargetGroupArn:
+                  Fn::ImportValue:
+                    Fn::Sub: '${ProjectName}-${EnvironmentName}-BackendTargetGroupArn'
+                Weight: 1
+
+  HttpToHttpsRedirect:
+    Condition: HttpsEnabled
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-HttpListenerArn'
+      Priority: 1
+      Conditions:
+        - Field: path-pattern
+          PathPatternConfig:
+            Values: ['/*']
+      Actions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: '443'
+            StatusCode: HTTP_301
+
+Outputs:
+  HttpsListenerArn:
+    Description: HTTPS listener ARN, or not-created when HTTPS is disabled.
+    Value: !If [HttpsEnabled, !Ref HttpsListener, not-created]
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-HttpsListenerArn

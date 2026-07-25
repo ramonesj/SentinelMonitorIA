@@ -359,4 +359,4 @@ buffer.when_full = "drop_newest"
 
 ## 🤝 Contribución
 
-Ver [CONTRIBUTING.md](../../CONTRIBUTING.md) para guías de contribución al agente.
+Consulta el [README principal](../../README.md) para el flujo de desarrollo; las pautas específicas de contribución del agente aún no están definidas.

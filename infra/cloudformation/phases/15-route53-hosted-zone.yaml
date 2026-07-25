@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SentinelMonitorIA phase 15: public Route 53 hosted zone for a controlled domain.'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+  RootDomainName:
+    Type: String
+    Description: Root domain controlled by the team, for example example.com.
+
+Resources:
+  PublicHostedZone:
+    Type: AWS::Route53::HostedZone
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Ref RootDomainName
+      HostedZoneConfig:
+        Comment: !Sub SentinelMonitorIA ${EnvironmentName} public DNS
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-hosted-zone
+        - Key: Component
+          Value: route53
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+Outputs:
+  HostedZoneId:
+    Description: Public hosted zone ID; delegate its nameservers at the registrar.
+    Value: !Ref PublicHostedZone
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-HostedZoneId
+  HostedZoneNameServers:
+    Description: Nameservers to configure at the domain registrar.
+    Value: !Join [',', !GetAtt PublicHostedZone.NameServers]
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-HostedZoneNameServers
+  RootDomainName:
+    Description: Root domain name.
+    Value: !Ref RootDomainName
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-RootDomainName

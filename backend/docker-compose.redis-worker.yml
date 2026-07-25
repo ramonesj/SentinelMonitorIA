@@ -26,6 +26,11 @@ services:
       REDIS_DB: 0
       REDIS_PASSWORD: ""
       QUEUE_PROVIDER: redis
+      REDIS_STREAM_PREFIX: sentinel:stream
+      REDIS_STREAM_MAX_LENGTH: 10000
+      REDIS_STREAM_CONSUMER_GROUP: sentinel-telemetry-workers
+      TELEMETRY_STALE_BATCH_SECONDS: 3600
+      REDIS_DEAD_LETTER_REPLAY_KEY: sentinel:stream:dead_letter:replayed
       TELEMETRY_BATCH_SIZE: 1000
       TELEMETRY_BUFFER_SIZE: 10000
       TELEMETRY_FLUSH_INTERVAL: 5
@@ -40,6 +45,116 @@ services:
     networks:
       - sentinel-network
     command: ["python", "-m", "src.workers.telemetry_worker"]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import os; raise SystemExit(0 if os.path.exists('/proc/1/cmdline') else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  ai-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: sentinel-ai-worker
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: development
+      DEBUG: "false"
+      LOG_LEVEL: info
+      SECRET_KEY: development-secret-key-change-in-production
+      JWT_SECRET_KEY: development-jwt-secret-change-in-production
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: sentinelmonitoria
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel123
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      REDIS_PASSWORD: ""
+      QUEUE_PROVIDER: redis
+      REDIS_STREAM_PREFIX: sentinel:stream
+      REDIS_STREAM_MAX_LENGTH: 10000
+      REDIS_DEAD_LETTER_REPLAY_KEY: sentinel:stream:dead_letter:replayed
+      AI_ANALYSIS_CONSUMER_GROUP: sentinel-ai-analysis-workers
+      NOTIFICATION_CONSUMER_GROUP: sentinel-notification-workers
+      AI_PROVIDER: ${AI_PROVIDER:-rules}
+      AI_MODEL_ID: ${AI_MODEL_ID:-}
+      AI_MODEL_NAME: ${AI_MODEL_NAME:-llama3.2}
+      AI_OLLAMA_BASE_URL: ${AI_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      AI_KNOWLEDGE_BASE_ID: ${AI_KNOWLEDGE_BASE_ID:-}
+      AI_ENABLE_ACTIONS: "false"
+      NOTIFICATION_CHANNELS: ${NOTIFICATION_CHANNELS:-log}
+    volumes:
+      - .:/app
+      - backend_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - sentinel-network
+    command: ["python", "-m", "src.workers.ai_analysis_worker"]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import os; raise SystemExit(0 if os.path.exists('/proc/1/cmdline') else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  notification-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: sentinel-notification-worker
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: development
+      DEBUG: "false"
+      LOG_LEVEL: info
+      SECRET_KEY: development-secret-key-change-in-production
+      JWT_SECRET_KEY: development-jwt-secret-change-in-production
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: sentinelmonitoria
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel123
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      REDIS_PASSWORD: ""
+      QUEUE_PROVIDER: redis
+      REDIS_STREAM_PREFIX: sentinel:stream
+      REDIS_STREAM_MAX_LENGTH: 10000
+      REDIS_DEAD_LETTER_REPLAY_KEY: sentinel:stream:dead_letter:replayed
+      NOTIFICATION_CONSUMER_GROUP: sentinel-notification-workers
+      NOTIFICATION_CHANNELS: ${NOTIFICATION_CHANNELS:-log}
+      NOTIFICATION_REQUEST_TIMEOUT_SECONDS: 15
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      NOTIFICATION_EMAIL_TO: ${NOTIFICATION_EMAIL_TO:-}
+      NOTIFICATION_WEBHOOK_URL: ${NOTIFICATION_WEBHOOK_URL:-}
+      NOTIFICATION_SLACK_WEBHOOK_URL: ${NOTIFICATION_SLACK_WEBHOOK_URL:-}
+      NOTIFICATION_DISCORD_WEBHOOK_URL: ${NOTIFICATION_DISCORD_WEBHOOK_URL:-}
+      NOTIFICATION_TEAMS_WEBHOOK_URL: ${NOTIFICATION_TEAMS_WEBHOOK_URL:-}
+      NOTIFICATION_WEBHOOK_SECRET: ${NOTIFICATION_WEBHOOK_SECRET:-}
+    volumes:
+      - .:/app
+      - backend_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - sentinel-network
+    command: ["python", "-m", "src.workers.notification_worker"]
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import os; raise SystemExit(0 if os.path.exists('/proc/1/cmdline') else 1)\""]
       interval: 30s

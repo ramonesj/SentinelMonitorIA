@@ -149,6 +149,8 @@ class TelemetryWorker:
             if not batch:
                 raise ValueError(f"Telemetry batch {batch_uuid} was not found")
             if batch.status == "processed":
+                if batch.analysis_enqueued_at is None:
+                    await self._enqueue_analysis(message)
                 return
 
             organization_id = UUID(data["organization_id"])
@@ -214,6 +216,29 @@ class TelemetryWorker:
                     0.0, (datetime.utcnow() - received.replace(tzinfo=None)).total_seconds() * 1000
                 )
             await db.commit()
+            await self._enqueue_analysis(message)
+
+    async def _enqueue_analysis(self, message: QueueMessage) -> None:
+        """Publish analysis work after telemetry is durable and mark it idempotently."""
+        data = message.data
+        await self.producer.send(
+            QueueType.AI_ANALYSIS,
+            {
+                "batch_id": data["batch_id"],
+                "organization_id": data["organization_id"],
+                "agent_id": data["agent_id"],
+                "batch_data": data.get("batch_data") or {},
+                "received_at": data.get("received_at"),
+            },
+        )
+        async with DatabaseContext() as db:
+            result = await db.execute(
+                select(TelemetryBatch).where(TelemetryBatch.id == UUID(data["batch_id"]))
+            )
+            batch = result.scalar_one_or_none()
+            if batch and batch.analysis_enqueued_at is None:
+                batch.analysis_enqueued_at = datetime.utcnow()
+                await db.commit()
 
     async def _retry_or_dead_letter(
         self,

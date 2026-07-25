@@ -1,0 +1,280 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  SentinelMonitorIA phase 01: ARM64 NAT instance, EIP, forwarding rules and
+  private default routes. Deploy after 00-vpc-network.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+    AllowedPattern: '^[A-Za-z][A-Za-z0-9-]{1,31}$'
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+  NatInstanceType:
+    Type: String
+    Default: t4g.micro
+    AllowedValues: [t4g.nano, t4g.micro, t4g.small]
+  NatAmiParameter:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
+  NatRootVolumeSize:
+    Type: Number
+    Default: 8
+    MinValue: 8
+    MaxValue: 100
+
+Resources:
+  NatSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Private subnet forwarding to the ARM64 NAT instance.
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          CidrIp:
+            Fn::ImportValue:
+              Fn::Sub: '${ProjectName}-${EnvironmentName}-PrivateSubnet1Cidr'
+        - IpProtocol: -1
+          CidrIp:
+            Fn::ImportValue:
+              Fn::Sub: '${ProjectName}-${EnvironmentName}-PrivateSubnet2Cidr'
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-nat-sg
+        - Key: Purpose
+          Value: nat
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  NatInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-nat-role
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  NatInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /sentinel-monitoria/
+      Roles:
+        - !Ref NatInstanceRole
+
+  NatElasticIp:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-nat-eip
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  NatInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref NatAmiParameter
+      InstanceType: !Ref NatInstanceType
+      IamInstanceProfile: !Ref NatInstanceProfile
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex: '0'
+          GroupSet:
+            - !Ref NatSecurityGroup
+          SubnetId:
+            Fn::ImportValue:
+              Fn::Sub: '${ProjectName}-${EnvironmentName}-PublicSubnet1Id'
+      SourceDestCheck: false
+      Monitoring: false
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: !Ref NatRootVolumeSize
+            VolumeType: gp3
+            Encrypted: true
+            DeleteOnTermination: true
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+            - |
+              #!/bin/bash
+              set -Eeuo pipefail
+
+              BASDIR=/var
+              WRKDIR=$BASDIR/user-data
+              INSDIR=$WRKDIR/ins
+              LOGDIR=$BASDIR/log/user-data
+              TMPDIR=$WRKDIR/tmp
+              FIRSTRUN=$WRKDIR/firstrun
+              CWAGENTCTL=/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl
+              CWCONFIG=$TMPDIR/amazon-cloudwatch-agent.json
+              CWRPM=$INSDIR/amazon-cloudwatch-agent.rpm
+
+              mkdir -p $INSDIR $LOGDIR $TMPDIR
+              exec >>$LOGDIR/user-data.log 2>&1
+              if [ -f $FIRSTRUN ]; then exit 0; fi
+              trap 'status=$?; echo "NAT bootstrap failed with exit $status" >&2; exit $status' ERR
+
+              attempt=1
+              while ! dnf install -y iptables-services iproute curl; do
+                if [ $attempt -ge 5 ]; then exit 1; fi
+                sleep $((attempt * 15))
+                attempt=$((attempt + 1))
+              done
+
+              CWURL=https://amazoncloudwatch-agent.s3.amazonaws.com/amazon_linux/arm64/latest/amazon-cloudwatch-agent.rpm
+              curl --fail --silent --show-error --location $CWURL --output $CWRPM
+              rpm -Uvh $CWRPM
+
+              cat >$CWCONFIG <<'EOF'
+              {
+                "agent": {"metrics_collection_interval": 60, "run_as_user": "cwagent"},
+                "metrics": {"metrics_collected": {
+                  "disk": {"measurement": ["used_percent"], "metrics_collection_interval": 60, "resources": ["/"]},
+                  "mem": {"measurement": ["mem_used_percent"], "metrics_collection_interval": 60}
+                }}
+              }
+              EOF
+
+              $CWAGENTCTL -a fetch-config -m ec2 -s -c file:$CWCONFIG
+              systemctl enable --now amazon-cloudwatch-agent
+
+              cat >/etc/sysctl.d/80-sentinel-nat.conf <<'EOF'
+              net.ipv4.ip_forward = 1
+              net.ipv4.conf.all.rp_filter = 0
+              net.ipv4.conf.default.rp_filter = 0
+              EOF
+              sysctl --system
+
+              IFACE=$(ip -o -4 route show to default | awk '{print $5; exit}')
+              if [ -z "$IFACE" ]; then IFACE=ens5; fi
+              iptables -F FORWARD
+              iptables -t nat -F POSTROUTING
+              iptables -P FORWARD DROP
+              iptables -A FORWARD -s ${PrivateSubnet1Cidr} -o $IFACE -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
+              iptables -A FORWARD -s ${PrivateSubnet2Cidr} -o $IFACE -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
+              iptables -A FORWARD -d ${PrivateSubnet1Cidr} -i $IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+              iptables -A FORWARD -d ${PrivateSubnet2Cidr} -i $IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+              iptables -t nat -A POSTROUTING -s ${PrivateSubnet1Cidr} -o $IFACE -j MASQUERADE
+              iptables -t nat -A POSTROUTING -s ${PrivateSubnet2Cidr} -o $IFACE -j MASQUERADE
+              systemctl enable iptables
+              iptables-save >/etc/sysconfig/iptables
+              systemctl restart iptables
+              touch $FIRSTRUN
+            - PrivateSubnet1Cidr:
+                Fn::ImportValue:
+                  Fn::Sub: '${ProjectName}-${EnvironmentName}-PrivateSubnet1Cidr'
+              PrivateSubnet2Cidr:
+                Fn::ImportValue:
+                  Fn::Sub: '${ProjectName}-${EnvironmentName}-PrivateSubnet2Cidr'
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-nat
+        - Key: Role
+          Value: nat
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  NatEipAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt NatElasticIp.AllocationId
+      InstanceId: !Ref NatInstance
+
+  PrivateDefaultRoute1:
+    Type: AWS::EC2::Route
+    DependsOn: NatEipAssociation
+    Properties:
+      RouteTableId:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-PrivateRouteTable1Id'
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref NatInstance
+
+  PrivateDefaultRoute2:
+    Type: AWS::EC2::Route
+    DependsOn: NatEipAssociation
+    Properties:
+      RouteTableId:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-PrivateRouteTable2Id'
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref NatInstance
+
+Outputs:
+  NatInstanceId:
+    Description: NAT instance ID.
+    Value: !Ref NatInstance
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-NatInstanceId
+  NatPrivateIp:
+    Description: Private IP used by private route targets.
+    Value: !GetAtt NatInstance.PrivateIp
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-NatPrivateIp
+  NatElasticIp:
+    Description: Elastic IP assigned to the NAT instance.
+    Value: !Ref NatElasticIp
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-NatElasticIp
+  NatSecurityGroupId:
+    Description: NAT security group ID.
+    Value: !Ref NatSecurityGroup
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-NatSecurityGroupId

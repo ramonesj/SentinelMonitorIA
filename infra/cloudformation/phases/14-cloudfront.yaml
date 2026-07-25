@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  SentinelMonitorIA phase 14: CloudFront distribution with Origin Access
+  Control for the private frontend bucket.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+  UseCustomDomain:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+  FrontendDomainName:
+    Type: String
+    Default: ''
+  FrontendCertificateArn:
+    Type: String
+    Default: ''
+    Description: ACM certificate ARN in us-east-1; required when UseCustomDomain is true.
+  PriceClass:
+    Type: String
+    Default: PriceClass_100
+    AllowedValues: [PriceClass_100, PriceClass_200, PriceClass_All]
+
+Conditions:
+  HasCustomDomain: !Equals [!Ref UseCustomDomain, 'true']
+
+Resources:
+  FrontendOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub sentinel-monitoria-${EnvironmentName}-frontend-oac
+        Description: CloudFront access to the private frontend S3 bucket.
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  FrontendDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub SentinelMonitorIA ${EnvironmentName} frontend
+        DefaultRootObject: index.html
+        HttpVersion: http2
+        PriceClass: !Ref PriceClass
+        Aliases:
+          Fn::If:
+            - HasCustomDomain
+            - - !Ref FrontendDomainName
+            - !Ref AWS::NoValue
+        Origins:
+          - Id: FrontendS3Origin
+            DomainName:
+              Fn::ImportValue:
+                Fn::Sub: '${ProjectName}-${EnvironmentName}-FrontendBucketRegionalDomainName'
+            OriginAccessControlId: !Ref FrontendOriginAccessControl
+            S3OriginConfig: {}
+        DefaultCacheBehavior:
+          TargetOriginId: FrontendS3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD, OPTIONS]
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          Compress: true
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 0
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 0
+        ViewerCertificate:
+          Fn::If:
+            - HasCustomDomain
+            - AcmCertificateArn: !Ref FrontendCertificateArn
+              SslSupportMethod: sni-only
+              MinimumProtocolVersion: TLSv1.2_2021
+            - CloudFrontDefaultCertificate: true
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-cloudfront
+        - Key: Component
+          Value: cloudfront
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-FrontendBucketName'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontServiceReadOnly
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource:
+              Fn::Sub:
+                - '${BucketArn}/*'
+                - BucketArn:
+                    Fn::ImportValue:
+                      Fn::Sub: '${ProjectName}-${EnvironmentName}-FrontendBucketArn'
+            Condition:
+              StringEquals:
+                AWS:SourceArn:
+                  Fn::Sub:
+                    - arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${DistributionId}
+                    - DistributionId: !Ref FrontendDistribution
+
+Outputs:
+  CloudFrontDistributionId:
+    Description: CloudFront distribution ID.
+    Value: !Ref FrontendDistribution
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-CloudFrontDistributionId
+  CloudFrontDistributionArn:
+    Description: CloudFront distribution ARN.
+    Value: !Sub arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${FrontendDistribution}
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-CloudFrontDistributionArn
+  CloudFrontDomainName:
+    Description: CloudFront DNS name.
+    Value: !GetAtt FrontendDistribution.DomainName
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-CloudFrontDomainName
+  CloudFrontHostedZoneId:
+    Description: CloudFront alias hosted zone ID.
+    Value: Z2FDTNDATAQYW2
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-CloudFrontHostedZoneId

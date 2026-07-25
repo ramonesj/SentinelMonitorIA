@@ -14,6 +14,8 @@ class QueueType(str, Enum):
     LOGS = "logs"
     EVENTS = "events"
     ALERTS = "alerts"
+    AI_ANALYSIS = "ai_analysis"
+    NOTIFICATIONS = "notifications"
     DEAD_LETTER = "dead_letter"
 
 

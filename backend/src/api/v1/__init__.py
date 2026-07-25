@@ -5,7 +5,7 @@ Main router that includes all v1 API endpoints
 
 from fastapi import APIRouter
 
-from src.api.v1 import telemetry, health, auth, organizations
+from src.api.v1 import alerts, chat, telemetry, health, auth, organizations
 
 # Create main router
 router = APIRouter()
@@ -15,6 +15,8 @@ router.include_router(telemetry.router)
 router.include_router(health.router)
 router.include_router(auth.router)
 router.include_router(organizations.router)
+router.include_router(alerts.router)
+router.include_router(chat.router)
 
 # Additional routers will be added here:
 # - auth.router (authentication)

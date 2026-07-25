@@ -1,0 +1,158 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  SentinelMonitorIA phase 20: notification topic, channel secret and
+  CloudWatch logs.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+  LogRetentionInDays:
+    Type: Number
+    Default: 30
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 180, 365]
+
+Resources:
+  NotificationSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-notifications
+      Description: HMAC secret, channel URLs and SMTP credentials for notifications. Populate optional keys outside Git before enabling those channels.
+      GenerateSecretString:
+        SecretStringTemplate: '{"webhook_url":"","slack_webhook_url":"","discord_webhook_url":"","teams_webhook_url":"","smtp_username":"","smtp_password":""}'
+        GenerateStringKey: webhook_secret
+        PasswordLength: 64
+        ExcludePunctuation: true
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-notification-secret
+        - Key: Component
+          Value: notifications
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub sentinel-monitoria-${EnvironmentName}-alerts
+      DisplayName: SentinelMonitorIA alerts
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-alerts
+        - Key: Component
+          Value: notifications
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  NotificationLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /ecs/${ProjectName}/${EnvironmentName}/notification-worker
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-notification-logs
+        - Key: Component
+          Value: notifications
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  NotificationTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: PublishAndSendNotifications
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref NotificationTopic
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                Resource: '*'
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref NotificationSecret
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-notification-task-role
+        - Key: Component
+          Value: notifications
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+Outputs:
+  NotificationSecretArn:
+    Description: Secret containing webhook_secret and optional channel values.
+    Value: !Ref NotificationSecret
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-NotificationSecretArn
+  NotificationTopicArn:
+    Description: SNS topic for optional AWS-native alert consumers.
+    Value: !Ref NotificationTopic
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-NotificationTopicArn
+  NotificationTaskRoleArn:
+    Description: ECS task role for notification delivery.
+    Value: !GetAtt NotificationTaskRole.Arn
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-NotificationTaskRoleArn
+  NotificationLogGroupName:
+    Description: CloudWatch log group for notification worker.
+    Value: !Ref NotificationLogGroup
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-NotificationLogGroupName

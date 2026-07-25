@@ -86,6 +86,12 @@ class TelemetryBatch(Base):
         default=0,
         nullable=False
     )
+
+    analysis_enqueued_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
     
     # Metadata
     metadata_json: Mapped[Optional[dict]] = mapped_column(

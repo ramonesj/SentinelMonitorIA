@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SentinelMonitorIA phase 13: private S3 bucket for the built frontend.'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+  FrontendBucketName:
+    Type: String
+    Default: ''
+    Description: Optional globally unique bucket name; leave empty for a generated name.
+
+Conditions:
+  HasBucketName: !Not [!Equals [!Ref FrontendBucketName, '']]
+
+Resources:
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName:
+        Fn::If:
+          - HasBucketName
+          - !Ref FrontendBucketName
+          - !Ref AWS::NoValue
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-frontend
+        - Key: Component
+          Value: frontend
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+Outputs:
+  FrontendBucketName:
+    Description: Private S3 bucket name for frontend/dist.
+    Value: !Ref FrontendBucket
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-FrontendBucketName
+  FrontendBucketArn:
+    Description: Private S3 bucket ARN.
+    Value: !GetAtt FrontendBucket.Arn
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-FrontendBucketArn
+  FrontendBucketRegionalDomainName:
+    Description: Regional S3 origin domain for CloudFront.
+    Value: !GetAtt FrontendBucket.RegionalDomainName
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-FrontendBucketRegionalDomainName

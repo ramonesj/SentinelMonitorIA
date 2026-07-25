@@ -7,7 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 from src.config.settings import settings
 from src.models.base import Base
-from src.models import organization, telemetry, user  # noqa: F401
+from src.models import intelligence, organization, telemetry, user  # noqa: F401
 
 config = context.config
 

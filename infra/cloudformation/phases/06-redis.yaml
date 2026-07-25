@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  SentinelMonitorIA phase 06: private single-node ElastiCache Redis and its
+  generated Secrets Manager authentication token.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+  RedisNodeType:
+    Type: String
+    Default: cache.t4g.micro
+  RedisSnapshotRetentionDays:
+    Type: Number
+    Default: 7
+    MinValue: 0
+    MaxValue: 35
+
+Resources:
+  RedisSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-redis
+      Description: Generated Redis authentication token for SentinelMonitorIA.
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: auth_token
+        PasswordLength: 32
+        ExcludePunctuation: true
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-redis-secret
+        - Key: Component
+          Value: elasticache
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Private subnets for SentinelMonitorIA Redis.
+      SubnetIds:
+        - Fn::ImportValue:
+            Fn::Sub: '${ProjectName}-${EnvironmentName}-PrivateSubnet1Id'
+        - Fn::ImportValue:
+            Fn::Sub: '${ProjectName}-${EnvironmentName}-PrivateSubnet2Id'
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-redis-subnet-group
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  Redis:
+    Type: AWS::ElastiCache::ReplicationGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      ReplicationGroupId: !Sub sm-${EnvironmentName}-redis
+      ReplicationGroupDescription: Private Redis for SentinelMonitorIA rate limiting and streams.
+      Engine: redis
+      EngineVersion: '7.0'
+      CacheNodeType: !Ref RedisNodeType
+      NumCacheClusters: 1
+      AutomaticFailoverEnabled: false
+      MultiAzEnabled: false
+      AtRestEncryptionEnabled: true
+      TransitEncryptionEnabled: true
+      AuthToken: !Sub '{{resolve:secretsmanager:${RedisSecret}:SecretString:auth_token}}'
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+      SecurityGroupIds:
+        - Fn::ImportValue:
+            Fn::Sub: '${ProjectName}-${EnvironmentName}-RedisSecurityGroupId'
+      SnapshotRetentionLimit: !Ref RedisSnapshotRetentionDays
+      SnapshotWindow: 02:00-03:00
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-redis
+        - Key: Component
+          Value: elasticache
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+Outputs:
+  RedisEndpoint:
+    Description: Private Redis primary endpoint.
+    Value: !GetAtt Redis.PrimaryEndPoint.Address
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-RedisEndpoint
+  RedisPort:
+    Description: Redis port.
+    Value: !GetAtt Redis.PrimaryEndPoint.Port
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-RedisPort
+  RedisSecretArn:
+    Description: Secret ARN containing the auth_token JSON key.
+    Value: !Ref RedisSecret
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-RedisSecretArn

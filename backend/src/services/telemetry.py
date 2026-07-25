@@ -389,7 +389,7 @@ class TelemetryService:
                 event_count=total_items,
                 total_size_bytes=self._calculate_batch_size(batch_data),
                 ingestion_latency_ms=0,  # Will be updated later
-                metadata={
+                metadata_json={
                     "token_id": str(token_id) if token_id else None,
                     "agent_version": batch_data.metadata.agent_version,
                     "platform": batch_data.metadata.platform,

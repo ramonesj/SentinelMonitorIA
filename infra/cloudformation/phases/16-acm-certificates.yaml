@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  SentinelMonitorIA phase 16: DNS-validated ACM certificates for the API ALB
+  and CloudFront frontend. Deploy this stack in us-east-1.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+  ApiDomainName:
+    Type: String
+    Description: Fully qualified API hostname, for example api.example.com.
+  FrontendDomainName:
+    Type: String
+    Description: Fully qualified frontend hostname, for example app.example.com.
+
+Resources:
+  ApiCertificate:
+    Type: AWS::CertificateManager::Certificate
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      DomainName: !Ref ApiDomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref ApiDomainName
+          HostedZoneId:
+            Fn::ImportValue:
+              Fn::Sub: '${ProjectName}-${EnvironmentName}-HostedZoneId'
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-api-certificate
+        - Key: Component
+          Value: acm
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  FrontendCertificate:
+    Type: AWS::CertificateManager::Certificate
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      DomainName: !Ref FrontendDomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref FrontendDomainName
+          HostedZoneId:
+            Fn::ImportValue:
+              Fn::Sub: '${ProjectName}-${EnvironmentName}-HostedZoneId'
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-frontend-certificate
+        - Key: Component
+          Value: acm
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+Outputs:
+  ApiCertificateArn:
+    Description: ACM certificate ARN for the API ALB listener.
+    Value: !Ref ApiCertificate
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-ApiCertificateArn
+  FrontendCertificateArn:
+    Description: ACM certificate ARN for CloudFront frontend.
+    Value: !Ref FrontendCertificate
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-FrontendCertificateArn

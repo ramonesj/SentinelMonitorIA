@@ -1,9 +1,16 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
-  SentinelMonitorIA offline foundation: network, private data services and ECR
-  repositories. Review costs, IAM, secrets and regional support before use.
+  SentinelMonitorIA offline foundation for us-east-1: tagged VPC, public/private
+  routing, ARM64 NAT instance, private data services and ECR repositories.
+  Review costs, IAM, secrets and regional support before use.
 
 Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+    AllowedPattern: '^[A-Za-z][A-Za-z0-9-]{1,31}$'
+    ConstraintDescription: Must start with a letter and contain only letters, numbers and hyphens.
+    Description: Project identifier used in tags.
   EnvironmentName:
     Type: String
     Default: staging
@@ -11,6 +18,12 @@ Parameters:
       - staging
       - production
     Description: Environment suffix used in names and tags.
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+    ConstraintDescription: Use ISO format YYYY-MM-DD.
+    Description: Deployment planning date used as a common tag.
   VpcCidr:
     Type: String
     Default: 10.42.0.0/16
@@ -24,15 +37,37 @@ Parameters:
   PublicSubnet1Cidr:
     Type: String
     Default: 10.42.1.0/24
+    Description: CIDR for the first public subnet.
   PublicSubnet2Cidr:
     Type: String
     Default: 10.42.2.0/24
+    Description: CIDR for the second public subnet.
   PrivateSubnet1Cidr:
     Type: String
     Default: 10.42.11.0/24
+    Description: CIDR for the first private subnet.
   PrivateSubnet2Cidr:
     Type: String
     Default: 10.42.12.0/24
+    Description: CIDR for the second private subnet.
+  NatInstanceType:
+    Type: String
+    Default: t4g.micro
+    AllowedValues:
+      - t4g.nano
+      - t4g.micro
+      - t4g.small
+    Description: ARM64 NAT instance size; t4g.micro is the staging recommendation.
+  NatAmiParameter:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
+    Description: Public SSM parameter for the latest Amazon Linux 2023 ARM64 AMI.
+  NatRootVolumeSize:
+    Type: Number
+    Default: 8
+    MinValue: 8
+    MaxValue: 100
+    Description: Encrypted gp3 root volume size in GiB for the NAT instance.
   DBName:
     Type: String
     Default: sentinelmonitoria
@@ -89,8 +124,16 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub sentinel-monitoria-${EnvironmentName}-vpc
+        - Key: Project
+          Value: !Ref ProjectName
         - Key: Environment
           Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -98,6 +141,16 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub sentinel-monitoria-${EnvironmentName}-igw
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   InternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -117,6 +170,16 @@ Resources:
           Value: !Sub sentinel-monitoria-${EnvironmentName}-public-1
         - Key: Tier
           Value: public
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
@@ -130,6 +193,16 @@ Resources:
           Value: !Sub sentinel-monitoria-${EnvironmentName}-public-2
         - Key: Tier
           Value: public
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
@@ -143,6 +216,16 @@ Resources:
           Value: !Sub sentinel-monitoria-${EnvironmentName}-private-1
         - Key: Tier
           Value: private
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
@@ -156,6 +239,16 @@ Resources:
           Value: !Sub sentinel-monitoria-${EnvironmentName}-private-2
         - Key: Tier
           Value: private
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
@@ -164,6 +257,18 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub sentinel-monitoria-${EnvironmentName}-public-routes
+        - Key: Tier
+          Value: public
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   PublicDefaultRoute:
     Type: AWS::EC2::Route
@@ -192,6 +297,18 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub sentinel-monitoria-${EnvironmentName}-private-routes-1
+        - Key: Tier
+          Value: private
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   PrivateRouteTable2:
     Type: AWS::EC2::RouteTable
@@ -200,6 +317,18 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub sentinel-monitoria-${EnvironmentName}-private-routes-2
+        - Key: Tier
+          Value: private
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -224,6 +353,47 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub sentinel-monitoria-${EnvironmentName}-backend-sg
+        - Key: Purpose
+          Value: backend
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  NatSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: NAT instance forwarding from the configured private subnets.
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          CidrIp: !Ref PrivateSubnet1Cidr
+        - IpProtocol: -1
+          CidrIp: !Ref PrivateSubnet2Cidr
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-nat-sg
+        - Key: Purpose
+          Value: nat
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   DatabaseSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -241,6 +411,18 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub sentinel-monitoria-${EnvironmentName}-database-sg
+        - Key: Purpose
+          Value: database
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   RedisSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -258,6 +440,227 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub sentinel-monitoria-${EnvironmentName}-redis-sg
+        - Key: Purpose
+          Value: redis
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  NatInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-nat-role
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  NatInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /sentinel-monitoria/
+      Roles:
+        - !Ref NatInstanceRole
+
+  NatElasticIp:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-nat-eip
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  NatInstance:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - PublicDefaultRoute
+      - PublicSubnet1RouteTableAssociation
+      - NatInstanceProfile
+    Properties:
+      ImageId: !Ref NatAmiParameter
+      InstanceType: !Ref NatInstanceType
+      IamInstanceProfile: !Ref NatInstanceProfile
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex: '0'
+          GroupSet:
+            - !Ref NatSecurityGroup
+          SubnetId: !Ref PublicSubnet1
+      SourceDestCheck: false
+      Monitoring: false
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: !Ref NatRootVolumeSize
+            VolumeType: gp3
+            Encrypted: true
+            DeleteOnTermination: true
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -Eeuo pipefail
+
+          BASDIR=/var
+          WRKDIR=$BASDIR/user-data
+          INSDIR=$WRKDIR/ins
+          LOGDIR=$BASDIR/log/user-data
+          TMPDIR=$WRKDIR/tmp
+          FIRSTRUN=$WRKDIR/firstrun
+          CWAGENTCTL=/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl
+          CWCONFIG=$TMPDIR/amazon-cloudwatch-agent.json
+          CWRPM=$INSDIR/amazon-cloudwatch-agent.rpm
+
+          mkdir -p $INSDIR $LOGDIR $TMPDIR
+          exec >>$LOGDIR/user-data.log 2>&1
+
+          if [ -f $FIRSTRUN ]; then
+            exit 0
+          fi
+
+          trap 'status=$?; echo "NAT bootstrap failed with exit $status" >&2; exit $status' ERR
+
+          attempt=1
+          while ! dnf install -y iptables-services iproute curl; do
+            if [ $attempt -ge 5 ]; then
+              echo "Unable to install required NAT packages" >&2
+              exit 1
+            fi
+            sleep $((attempt * 15))
+            attempt=$((attempt + 1))
+          done
+
+          CWURL=https://amazoncloudwatch-agent.s3.amazonaws.com/amazon_linux/arm64/latest/amazon-cloudwatch-agent.rpm
+          curl --fail --silent --show-error --location $CWURL --output $CWRPM
+          rpm -Uvh $CWRPM
+
+          cat >$CWCONFIG <<'EOF'
+          {
+            "agent": {
+              "metrics_collection_interval": 60,
+              "run_as_user": "cwagent"
+            },
+            "metrics": {
+              "metrics_collected": {
+                "disk": {
+                  "measurement": ["used_percent"],
+                  "metrics_collection_interval": 60,
+                  "resources": ["/"]
+                },
+                "mem": {
+                  "measurement": ["mem_used_percent"],
+                  "metrics_collection_interval": 60
+                }
+              }
+            }
+          }
+          EOF
+
+          $CWAGENTCTL -a fetch-config -m ec2 -s -c file:$CWCONFIG
+          systemctl enable --now amazon-cloudwatch-agent
+
+          cat >/etc/sysctl.d/80-sentinel-nat.conf <<'EOF'
+          net.ipv4.ip_forward = 1
+          net.ipv4.conf.all.rp_filter = 0
+          net.ipv4.conf.default.rp_filter = 0
+          EOF
+          sysctl --system
+
+          IFACE=$(ip -o -4 route show to default | awk '{print $5; exit}')
+          if [ -z "$IFACE" ]; then
+            IFACE=ens5
+          fi
+
+          iptables -F FORWARD
+          iptables -t nat -F POSTROUTING
+          iptables -P FORWARD DROP
+          iptables -A FORWARD -s ${PrivateSubnet1Cidr} -o $IFACE -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
+          iptables -A FORWARD -s ${PrivateSubnet2Cidr} -o $IFACE -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
+          iptables -A FORWARD -d ${PrivateSubnet1Cidr} -i $IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+          iptables -A FORWARD -d ${PrivateSubnet2Cidr} -i $IFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+          iptables -t nat -A POSTROUTING -s ${PrivateSubnet1Cidr} -o $IFACE -j MASQUERADE
+          iptables -t nat -A POSTROUTING -s ${PrivateSubnet2Cidr} -o $IFACE -j MASQUERADE
+
+          systemctl enable iptables
+          iptables-save >/etc/sysconfig/iptables
+          systemctl restart iptables
+
+          touch $FIRSTRUN
+          echo "NAT bootstrap completed"
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-nat
+        - Key: Role
+          Value: nat
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  NatEipAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt NatElasticIp.AllocationId
+      InstanceId: !Ref NatInstance
+
+  PrivateDefaultRoute1:
+    Type: AWS::EC2::Route
+    DependsOn: NatEipAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref NatInstance
+
+  PrivateDefaultRoute2:
+    Type: AWS::EC2::Route
+    DependsOn: NatEipAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref NatInstance
 
   DatabaseSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
@@ -269,6 +672,16 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub sentinel-monitoria-${EnvironmentName}-db-subnet-group
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   Database:
     Type: AWS::RDS::DBInstance
@@ -302,8 +715,16 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub sentinel-monitoria-${EnvironmentName}-postgres
+        - Key: Project
+          Value: !Ref ProjectName
         - Key: Environment
           Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   RedisSubnetGroup:
     Type: AWS::ElastiCache::SubnetGroup
@@ -312,6 +733,19 @@ Resources:
       SubnetIds:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-redis-subnet-group
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   Redis:
     Type: AWS::ElastiCache::ReplicationGroup
@@ -337,8 +771,16 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub sentinel-monitoria-${EnvironmentName}-redis
+        - Key: Project
+          Value: !Ref ProjectName
         - Key: Environment
           Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   BackendRepository:
     Type: AWS::ECR::Repository
@@ -354,8 +796,18 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub sentinel-monitoria-${EnvironmentName}-backend
+        - Key: Component
+          Value: backend
+        - Key: Project
+          Value: !Ref ProjectName
         - Key: Environment
           Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
   WorkerRepository:
     Type: AWS::ECR::Repository
@@ -371,24 +823,100 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub sentinel-monitoria-${EnvironmentName}-worker
+        - Key: Component
+          Value: worker
+        - Key: Project
+          Value: !Ref ProjectName
         - Key: Environment
           Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
 
 Outputs:
+  ProjectName:
+    Description: Project tag value.
+    Value: !Ref ProjectName
+  EnvironmentName:
+    Description: Environment tag value.
+    Value: !Ref EnvironmentName
+  DeploymentDay:
+    Description: Deployment planning date tag.
+    Value: !Ref DeploymentDay
   VpcId:
     Description: Foundation VPC ID.
     Value: !Ref VPC
     Export:
       Name: !Sub ${AWS::StackName}-VpcId
+  VpcCidr:
+    Description: Foundation VPC CIDR.
+    Value: !Ref VpcCidr
+  InternetGatewayId:
+    Description: Internet Gateway attached to the VPC.
+    Value: !Ref InternetGateway
+  PublicSubnet1Id:
+    Description: First public subnet ID.
+    Value: !Ref PublicSubnet1
+  PublicSubnet2Id:
+    Description: Second public subnet ID.
+    Value: !Ref PublicSubnet2
   PublicSubnetIds:
     Description: Public subnet IDs for a future ALB layer.
     Value: !Join [',', [!Ref PublicSubnet1, !Ref PublicSubnet2]]
+  PublicSubnetCidrs:
+    Description: Public subnet CIDRs in AZ order.
+    Value: !Join [',', [!Ref PublicSubnet1Cidr, !Ref PublicSubnet2Cidr]]
+  PublicRouteTableId:
+    Description: Public route table ID.
+    Value: !Ref PublicRouteTable
+  PrivateSubnet1Id:
+    Description: First private subnet ID.
+    Value: !Ref PrivateSubnet1
+  PrivateSubnet2Id:
+    Description: Second private subnet ID.
+    Value: !Ref PrivateSubnet2
   PrivateSubnetIds:
     Description: Private subnet IDs for ECS, RDS and ElastiCache layers.
     Value: !Join [',', [!Ref PrivateSubnet1, !Ref PrivateSubnet2]]
+  PrivateSubnetCidrs:
+    Description: Private subnet CIDRs in AZ order.
+    Value: !Join [',', [!Ref PrivateSubnet1Cidr, !Ref PrivateSubnet2Cidr]]
+  PrivateRouteTable1Id:
+    Description: First private route table ID.
+    Value: !Ref PrivateRouteTable1
+  PrivateRouteTable2Id:
+    Description: Second private route table ID.
+    Value: !Ref PrivateRouteTable2
+  NatInstanceId:
+    Description: NAT instance ID.
+    Value: !Ref NatInstance
+  NatInstancePrivateIp:
+    Description: Private IP used as the NAT route target.
+    Value: !GetAtt NatInstance.PrivateIp
+  NatElasticIp:
+    Description: Elastic IPv4 address associated with the NAT instance.
+    Value: !Ref NatElasticIp
+  NatElasticIpAllocationId:
+    Description: Elastic IP allocation ID for the NAT instance.
+    Value: !GetAtt NatElasticIp.AllocationId
+  NatSecurityGroupId:
+    Description: NAT instance security group ID.
+    Value: !Ref NatSecurityGroup
+  NatInstanceRoleArn:
+    Description: IAM role ARN attached to the NAT instance.
+    Value: !GetAtt NatInstanceRole.Arn
   BackendSecurityGroupId:
     Description: Security group to attach to future backend tasks.
     Value: !Ref BackendSecurityGroup
+  DatabaseSecurityGroupId:
+    Description: Security group attached to PostgreSQL.
+    Value: !Ref DatabaseSecurityGroup
+  RedisSecurityGroupId:
+    Description: Security group attached to Redis.
+    Value: !Ref RedisSecurityGroup
   DatabaseEndpoint:
     Description: Private PostgreSQL endpoint.
     Value: !GetAtt Database.Endpoint.Address

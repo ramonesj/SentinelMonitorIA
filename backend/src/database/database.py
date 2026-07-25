@@ -15,6 +15,7 @@ from sqlalchemy.pool import NullPool
 from src.config.settings import settings
 from src.config.logging import logger
 from src.models.base import Base
+from src.models import intelligence  # noqa: F401 - register AI and alert tables
 
 
 class DatabaseManager:

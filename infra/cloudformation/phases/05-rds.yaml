@@ -1,0 +1,168 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  SentinelMonitorIA phase 05: private RDS PostgreSQL and its generated
+  Secrets Manager credentials.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+  DBName:
+    Type: String
+    Default: sentinelmonitoria
+    AllowedPattern: '^[a-z][a-z0-9_]{0,62}$'
+  DBUsername:
+    Type: String
+    Default: sentinel
+    MinLength: 1
+    MaxLength: 63
+    AllowedPattern: '^[a-zA-Z][a-zA-Z0-9_]*$'
+  DBInstanceClass:
+    Type: String
+    Default: db.t4g.micro
+  DBAllocatedStorage:
+    Type: Number
+    Default: 20
+    MinValue: 20
+    MaxValue: 16384
+  DBBackupRetentionDays:
+    Type: Number
+    Default: 7
+    MinValue: 0
+    MaxValue: 35
+  DeletionProtection:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+
+Conditions:
+  EnableDeletionProtection: !Equals [!Ref DeletionProtection, 'true']
+
+Resources:
+  DatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-database
+      Description: Generated PostgreSQL username and password for SentinelMonitorIA.
+      GenerateSecretString:
+        SecretStringTemplate: !Sub '{"username":"${DBUsername}"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludePunctuation: true
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-database-secret
+        - Key: Component
+          Value: rds
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private subnets for SentinelMonitorIA PostgreSQL.
+      SubnetIds:
+        - Fn::ImportValue:
+            Fn::Sub: '${ProjectName}-${EnvironmentName}-PrivateSubnet1Id'
+        - Fn::ImportValue:
+            Fn::Sub: '${ProjectName}-${EnvironmentName}-PrivateSubnet2Id'
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-database-subnet-group
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      DBInstanceIdentifier: !Sub sentinel-monitoria-${EnvironmentName}-postgres
+      Engine: postgres
+      EngineVersion: '15.4'
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref DBAllocatedStorage
+      MaxAllocatedStorage: 100
+      StorageType: gp3
+      StorageEncrypted: true
+      DBName: !Ref DBName
+      MasterUsername: !Sub '{{resolve:secretsmanager:${DatabaseSecret}:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${DatabaseSecret}:SecretString:password}}'
+      Port: 5432
+      PubliclyAccessible: false
+      MultiAZ: false
+      DeletionProtection: !If [EnableDeletionProtection, true, false]
+      BackupRetentionPeriod: !Ref DBBackupRetentionDays
+      CopyTagsToSnapshot: true
+      DeleteAutomatedBackups: false
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      VPCSecurityGroups:
+        - Fn::ImportValue:
+            Fn::Sub: '${ProjectName}-${EnvironmentName}-DatabaseSecurityGroupId'
+      EnableCloudwatchLogsExports:
+        - postgresql
+      PreferredBackupWindow: 03:00-03:30
+      PreferredMaintenanceWindow: sun:04:00-sun:04:30
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-postgres
+        - Key: Component
+          Value: rds
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+Outputs:
+  DatabaseEndpoint:
+    Description: Private PostgreSQL endpoint.
+    Value: !GetAtt Database.Endpoint.Address
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-DatabaseEndpoint
+  DatabasePort:
+    Description: PostgreSQL port.
+    Value: !GetAtt Database.Endpoint.Port
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-DatabasePort
+  DatabaseSecretArn:
+    Description: Secret ARN containing username and password JSON keys.
+    Value: !Ref DatabaseSecret
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-DatabaseSecretArn
+  DatabaseName:
+    Description: PostgreSQL database name.
+    Value: !Ref DBName
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-DatabaseName

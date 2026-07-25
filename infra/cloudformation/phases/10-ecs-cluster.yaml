@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SentinelMonitorIA phase 10: ECS Fargate cluster with Container Insights.'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+  ContainerInsights:
+    Type: String
+    Default: enabled
+    AllowedValues: [enabled, disabled, enhanced]
+
+Resources:
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub sentinel-monitoria-${EnvironmentName}
+      ClusterSettings:
+        - Name: containerInsights
+          Value: !Ref ContainerInsights
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Base: 1
+          Weight: 1
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-ecs
+        - Key: Component
+          Value: ecs-cluster
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+Outputs:
+  EcsClusterArn:
+    Description: ECS cluster ARN.
+    Value: !GetAtt EcsCluster.Arn
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-EcsClusterArn
+  EcsClusterName:
+    Description: ECS cluster name.
+    Value: !Ref EcsCluster
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-EcsClusterName

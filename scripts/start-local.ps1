@@ -5,13 +5,15 @@ param(
     [switch]$Build,
     [switch]$Logs,
     [switch]$Clean,
-    [switch]$Frontend
+    [switch]$Frontend,
+    [switch]$Intelligence
 )
 
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $composeFile = Join-Path $projectRoot "backend\docker-compose.yml"
 $frontendComposeFile = Join-Path $projectRoot "backend\docker-compose.frontend.yml"
+$intelligenceComposeFile = Join-Path $projectRoot "backend\docker-compose.redis-worker.yml"
 $dockerUserBin = Join-Path $env:LOCALAPPDATA "Programs\DockerDesktop\resources\bin"
 
 if ((Test-Path (Join-Path $dockerUserBin "docker.exe")) -and ($env:Path -notlike "*$dockerUserBin*")) {
@@ -32,6 +34,11 @@ if ($Frontend -and -not (Test-Path $frontendComposeFile)) {
     exit 1
 }
 
+if ($Intelligence -and -not (Test-Path $intelligenceComposeFile)) {
+    Write-Host ("ERROR: No existe {0}" -f $intelligenceComposeFile) -ForegroundColor Red
+    exit 1
+}
+
 $dockerVersion = & docker --version 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Docker CLI no está disponible." -ForegroundColor Red
@@ -48,6 +55,9 @@ $composeArgs = @("compose", "-f", $composeFile)
 if ($Frontend) {
     $composeArgs += @("-f", $frontendComposeFile)
 }
+if ($Intelligence) {
+    $composeArgs += @("-f", $intelligenceComposeFile)
+}
 
 if ($Clean) {
     Write-Host "Eliminando servicios y volúmenes locales..." -ForegroundColor Yellow
@@ -58,7 +68,9 @@ if ($Clean) {
 }
 
 if ($Build) {
-    if ($Frontend) {
+    if ($Intelligence) {
+        Write-Host "Construyendo backend, telemetry worker, AI worker y notification worker..." -ForegroundColor Yellow
+    } elseif ($Frontend) {
         Write-Host "Construyendo las imágenes del backend y frontend..." -ForegroundColor Yellow
     } else {
         Write-Host "Construyendo la imagen del backend..." -ForegroundColor Yellow
@@ -70,7 +82,9 @@ if ($Build) {
     }
 }
 
-if ($Frontend) {
+if ($Intelligence) {
+    Write-Host "Iniciando PostgreSQL, Redis, backend, telemetry worker, AI worker y notification worker..." -ForegroundColor Yellow
+} elseif ($Frontend) {
     Write-Host "Iniciando PostgreSQL, Redis, backend y frontend en Docker (LocalStack es opcional con el perfil aws)..." -ForegroundColor Yellow
 } else {
     Write-Host "Iniciando PostgreSQL, Redis y backend (LocalStack es opcional con el perfil aws)..." -ForegroundColor Yellow

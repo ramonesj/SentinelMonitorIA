@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  SentinelMonitorIA phase 18: optional Route 53 alias records for the API ALB
+  and CloudFront frontend.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: SentinelMonitorIA
+  EnvironmentName:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, production]
+  DeploymentDay:
+    Type: String
+    Default: '2026-07-23'
+    AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+  CreateDnsRecords:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+  ApiDomainName:
+    Type: String
+    Default: api.example.com
+  FrontendDomainName:
+    Type: String
+    Default: app.example.com
+
+Conditions:
+  DnsEnabled: !Equals [!Ref CreateDnsRecords, 'true']
+
+Resources:
+  ApiAliasA:
+    Condition: DnsEnabled
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-HostedZoneId'
+      Name: !Ref ApiDomainName
+      Type: A
+      AliasTarget:
+        DNSName:
+          Fn::ImportValue:
+            Fn::Sub: '${ProjectName}-${EnvironmentName}-LoadBalancerDnsName'
+        HostedZoneId:
+          Fn::ImportValue:
+            Fn::Sub: '${ProjectName}-${EnvironmentName}-LoadBalancerHostedZoneId'
+        EvaluateTargetHealth: true
+
+  ApiAliasAAAA:
+    Condition: DnsEnabled
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-HostedZoneId'
+      Name: !Ref ApiDomainName
+      Type: AAAA
+      AliasTarget:
+        DNSName:
+          Fn::ImportValue:
+            Fn::Sub: '${ProjectName}-${EnvironmentName}-LoadBalancerDnsName'
+        HostedZoneId:
+          Fn::ImportValue:
+            Fn::Sub: '${ProjectName}-${EnvironmentName}-LoadBalancerHostedZoneId'
+        EvaluateTargetHealth: true
+
+  FrontendAliasA:
+    Condition: DnsEnabled
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-HostedZoneId'
+      Name: !Ref FrontendDomainName
+      Type: A
+      AliasTarget:
+        DNSName:
+          Fn::ImportValue:
+            Fn::Sub: '${ProjectName}-${EnvironmentName}-CloudFrontDomainName'
+        HostedZoneId: Z2FDTNDATAQYW2
+        EvaluateTargetHealth: false
+
+  FrontendAliasAAAA:
+    Condition: DnsEnabled
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue:
+          Fn::Sub: '${ProjectName}-${EnvironmentName}-HostedZoneId'
+      Name: !Ref FrontendDomainName
+      Type: AAAA
+      AliasTarget:
+        DNSName:
+          Fn::ImportValue:
+            Fn::Sub: '${ProjectName}-${EnvironmentName}-CloudFrontDomainName'
+        HostedZoneId: Z2FDTNDATAQYW2
+        EvaluateTargetHealth: false
+
+Outputs:
+  DnsRecordsStatus:
+    Description: Whether phase 18 created alias records.
+    Value: !If [DnsEnabled, created, not-created]

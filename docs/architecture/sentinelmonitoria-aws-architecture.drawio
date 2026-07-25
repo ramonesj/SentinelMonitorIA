@@ -1,0 +1,259 @@
+<mxfile host="app.diagrams.net" modified="2026-07-23T00:00:00.000Z" agent="Kiro" version="24.7.17" type="device">
+  <diagram id="sentinel-aws-architecture" name="AWS Architecture">
+    <mxGraphModel dx="1600" dy="1400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1400" math="0" shadow="0" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="SentinelMonitorIA — AWS us-east-1 — staging · IA y alertas" style="text;html=1;strokeColor=none;fillColor=none;fontColor=#232F3E;fontSize=24;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="900" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="Arquitectura modular CloudFormation · DeploymentDay 2026-07-23 · ARM64" style="text;html=1;strokeColor=none;fillColor=none;fontColor=#5B6770;fontSize=13;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="42" y="58" width="900" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="external" value="Usuarios y agentes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#94A3B8;strokeWidth=1;dashed=1;fontColor=#334155;fontSize=14;fontStyle=1;verticalAlign=top;align=left;spacingTop=8;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="150" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="users" value="Usuarios / agentes" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.users;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=11;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="78" y="150" width="72" height="72" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge" value="Edge y distribución" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E7;strokeColor=#E3A008;strokeWidth=2;fontColor=#7A4E00;fontSize=14;fontStyle=1;verticalAlign=top;align=left;spacingTop=8;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="230" y="100" width="1280" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="route53" value="Route 53\nDNS opcional" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.route_53;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=11;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="270" y="150" width="72" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="acm" value="ACM\nTLS opcional" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.certificate_manager;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=11;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="390" y="150" width="72" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="cloudfront" value="CloudFront\nFrontend" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudfront;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=11;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="550" y="150" width="72" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="alb" value="Application\nLoad Balancer" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.application_load_balancer;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=11;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="720" y="150" width="72" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-note" value="HTTPS API: api.example.com · Frontend: app.example.com" style="text;html=1;strokeColor=none;fillColor=none;fontColor=#7A4E00;fontSize=12;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="900" y="160" width="530" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-note2" value="Las fases Route 53/ACM/HTTPS son opcionales hasta tener dominio real" style="text;html=1;strokeColor=none;fillColor=none;fontColor=#7A4E00;fontSize=12;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="900" y="195" width="560" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="region" value="AWS Region: us-east-1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#64748B;strokeWidth=2;dashed=1;fontColor=#334155;fontSize=15;fontStyle=1;verticalAlign=top;align=left;spacingTop=10;spacingLeft=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="310" width="1470" height="990" as="geometry" />
+        </mxCell>
+        <mxCell id="vpc" value="VPC 10.42.0.0/16" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2F7FF;strokeColor=#4C78A8;strokeWidth=2;dashed=1;fontColor=#1E3A5F;fontSize=15;fontStyle=1;verticalAlign=top;align=left;spacingTop=10;spacingLeft=14;" vertex="1" parent="1">
+          <mxGeometry x="70" y="360" width="1080" height="510" as="geometry" />
+        </mxCell>
+        <mxCell id="vpc-note" value="DNS support/hostnames enabled · common tags Project / Environment / DeploymentDay / ManagedBy / CostCenter" style="text;html=1;strokeColor=none;fillColor=none;fontColor=#1E3A5F;fontSize=11;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="100" y="395" width="970" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="public" value="Public subnets · 10.42.1.0/24 + 10.42.2.0/24" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF7ED;strokeColor=#F59E0B;strokeWidth=1;dashed=1;fontColor=#92400E;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingTop=8;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="435" width="1000" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="igw" value="Internet\nGateway" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.internet_gateway;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=11;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="135" y="475" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="nat" value="EC2 NAT instance\nt4g.micro ARM64\nSourceDestCheck false" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ec2;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=10;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="300" y="465" width="78" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="eip" value="Elastic IP" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.elastic_ip;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=11;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="450" y="475" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="public-route" value="Public route table\n0.0.0.0/0 → IGW" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#F59E0B;strokeWidth=1;fontColor=#92400E;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="610" y="475" width="190" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="public-az" value="us-east-1a / us-east-1b" style="text;html=1;strokeColor=none;fillColor=none;fontColor=#92400E;fontSize=11;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="850" y="490" width="210" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="private" value="Private subnets · 10.42.11.0/24 + 10.42.12.0/24" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F3FF;strokeColor=#8B5CF6;strokeWidth=1;dashed=1;fontColor=#5B21B6;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingTop=8;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="615" width="1000" height="225" as="geometry" />
+        </mxCell>
+        <mxCell id="ecs" value="ECS Fargate\nCluster" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ecs;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=11;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="145" y="675" width="72" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="backend" value="Backend task\nARM64 · :8000\n/health" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ecs;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=10;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="300" y="665" width="82" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="worker" value="Worker task\nARM64\ntelemetry_worker" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ecs;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=10;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="445" y="665" width="82" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="private-route" value="Private route tables\n0.0.0.0/0 → NAT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F3FF;strokeColor=#8B5CF6;strokeWidth=1;fontColor=#5B21B6;fontSize=11;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="590" y="685" width="170" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="sg" value="Security Groups\nALB → backend:8000\nbackend → RDS/Redis" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.security_group;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=10;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="825" y="665" width="82" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="iam" value="IAM roles\nECS + NAT" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.iam;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=11;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="970" y="675" width="72" height="72" as="geometry" />
+        </mxCell>
+
+        <mxCell id="data" value="Private data services" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#10B981;strokeWidth=1;dashed=1;fontColor=#065F46;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingTop=8;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="360" width="300" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="rds" value="RDS PostgreSQL\nprivate · encrypted" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.rds;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=11;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="420" width="82" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="redis" value="ElastiCache Redis\nprivate · TLS/auth" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.elasticache;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=11;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="420" width="82" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="secrets" value="Secrets Manager\nRDS · Redis · JWT" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.secrets_manager;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=10;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="1285" y="535" width="82" height="82" as="geometry" />
+        </mxCell>
+
+        <mxCell id="platform" value="Build y observabilidad" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1;dashed=1;fontColor=#334155;fontSize=13;fontStyle=1;verticalAlign=top;align=left;spacingTop=8;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="665" width="300" height="205" as="geometry" />
+        </mxCell>
+        <mxCell id="ecr" value="ECR\nBackend + Worker\nARM64 tags" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ecr;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=10;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="1215" y="720" width="78" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="cloudwatch" value="CloudWatch\nlogs + metrics" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudwatch;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=10;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="1355" y="720" width="78" height="78" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s3" value="S3 privado\nfrontend/dist" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=11;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="570" y="145" width="72" height="72" as="geometry" />
+        </mxCell>
+
+        <mxCell id="intelligence" value="Inteligencia IA y alertas · fases 19–22" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F3FF;strokeColor=#7C3AED;strokeWidth=2;dashed=1;fontColor=#5B21B6;fontSize=14;fontStyle=1;verticalAlign=top;align=left;spacingTop=10;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="70" y="900" width="1410" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="ai-queue" value="Redis Stream\nai_analysis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=1;fontColor=#92400E;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="100" y="970" width="145" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ai-worker" value="AI worker\nARM64\nai_analysis_worker" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ecs;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=10;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="285" y="960" width="82" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="bedrock" value="Amazon Bedrock\nConverse + RAG opcional" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=10;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="430" y="960" width="82" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="ai-archive" value="S3 privado\nIA / archive" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=10;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="570" y="960" width="82" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="notification-queue" value="Redis Stream\nnotifications" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=1;fontColor=#92400E;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="700" y="970" width="145" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="notification-worker" value="Notification worker\nARM64\nnotification_worker" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ecs;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=10;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="880" y="960" width="82" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="sns" value="Amazon SNS\nopcional" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sns;html=1;aspect=fixed;align=center;verticalAlign=bottom;verticalLabelPosition=bottom;fontSize=10;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="960" width="82" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="channels" value="Canales multicanal&lt;br/&gt;Email · Slack · Discord&lt;br/&gt;Microsoft Teams · WebSocket&lt;br/&gt;Webhook / Integraciones" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF1F2;strokeColor=#E11D48;strokeWidth=1;fontColor=#9F1239;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="945" width="290" height="135" as="geometry" />
+        </mxCell>
+        <mxCell id="intelligence-note" value="Reglas deterministas primero · explicaciones y recuperación de contexto opcionales · acciones automáticas desactivadas" style="text;html=1;strokeColor=none;fillColor=none;fontColor=#5B21B6;fontSize=11;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="105" y="1100" width="1300" height="35" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend" value="Leyenda:  línea sólida = tráfico de aplicación · línea discontinua = control, secretos o egress · línea punteada = DNS / contrato opcional" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1;fontColor=#475569;fontSize=11;align=left;verticalAlign=middle;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1260" width="1470" height="38" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a1" value="HTTPS frontend" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="users" target="cloudfront">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" value="HTTPS API" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="users" target="alb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" value="DNS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;dashed=1;endArrow=open;" edge="1" parent="1" source="route53" target="cloudfront">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a4" value="DNS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;dashed=1;endArrow=open;" edge="1" parent="1" source="route53" target="alb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" value="OAC / S3 origin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#D97706;dashed=1;endArrow=block;endFill=1;" edge="1" parent="1" source="cloudfront" target="s3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a6" value="TLS certificate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;dashed=1;endArrow=open;" edge="1" parent="1" source="acm" target="alb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a7" value="TLS certificate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;dashed=1;endArrow=open;" edge="1" parent="1" source="acm" target="cloudfront">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a8" value="HTTP:8000" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="alb" target="backend">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a9" value="ECS service" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563EB;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="ecs" target="backend">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a10" value="PostgreSQL" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="backend" target="rds">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a11" value="Redis 6379/TLS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="backend" target="redis">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a12" value="Redis Streams" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="worker" target="redis">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a13" value="DB" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;endArrow=block;endFill=1;" edge="1" parent="1" source="worker" target="rds">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a14" value="Secret injection" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#7C3AED;dashed=1;endArrow=open;" edge="1" parent="1" source="secrets" target="backend">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a15" value="Secret injection" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#7C3AED;dashed=1;endArrow=open;" edge="1" parent="1" source="secrets" target="worker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a16" value="Image pull" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;dashed=1;endArrow=open;" edge="1" parent="1" source="ecr" target="ecs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a17" value="Logs / metrics" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;dashed=1;endArrow=open;" edge="1" parent="1" source="backend" target="cloudwatch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a18" value="Logs / metrics" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;dashed=1;endArrow=open;" edge="1" parent="1" source="worker" target="cloudwatch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a19" value="Private egress" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;dashed=1;endArrow=open;" edge="1" parent="1" source="private-route" target="nat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a20" value="Internet egress" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;dashed=1;endArrow=open;" edge="1" parent="1" source="nat" target="igw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a21" value="EIP" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;dashed=1;endArrow=open;" edge="1" parent="1" source="eip" target="nat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a22" value="Security boundaries" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;dashed=1;endArrow=open;" edge="1" parent="1" source="sg" target="backend">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a23" value="Roles" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;dashed=1;endArrow=open;" edge="1" parent="1" source="iam" target="ecs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a24" value="persist + publish ai_analysis" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#D97706;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="worker" target="ai-queue">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a25" value="consume" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#D97706;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="ai-queue" target="ai-worker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a26" value="Converse / Retrieve" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#7C3AED;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="ai-worker" target="bedrock">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a27" value="redacted context" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;dashed=1;endArrow=block;endFill=1;" edge="1" parent="1" source="ai-worker" target="ai-archive">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a28" value="publish alert" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#D97706;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="ai-worker" target="notification-queue">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a29" value="consume" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#D97706;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="notification-queue" target="notification-worker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a30" value="SNS opcional" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#E11D48;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="notification-worker" target="sns">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a31" value="HTTPS / SMTP / webhooks" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#E11D48;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="notification-worker" target="channels">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a32" value="WebSocket alert stream" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#E11D48;dashed=1;endArrow=block;endFill=1;" edge="1" parent="1" source="backend" target="channels">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a33" value="alert status / DB" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="notification-worker" target="rds">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
