@@ -120,10 +120,12 @@ Si `localhost:3000` devuelve conexión rechazada, iniciar el frontend manual con
 
 ## Estado Git de esta fase
 
-La validación se realizó con cambios locales sin commit ni push. Antes de crear un commit, revisar:
+Este informe registra la validación realizada antes de la entrega Git final. La implementación validada se consolidó posteriormente en el commit `bade50226322a7dc2560e59068e59434b9948212` de `main` y se publicó en `origin/main`. El cierre cronológico y el estado final están en el [registro consolidado de implementación y entrega](project-delivery-record.md).
+
+Para revisar el estado actual:
 
 ```powershell
-git status --short
-git diff --check
-git diff --stat
+git status --short --branch
+git log -1 --oneline
+git ls-remote --heads origin main
 ```

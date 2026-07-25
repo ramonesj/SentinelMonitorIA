@@ -43,8 +43,8 @@ La documentación centralizada está en [`docs/README.md`](docs/README.md). Desd
 - [Despliegue CloudFormation por fases](docs/deployment/cloudformation-phased-plan.md)
 - [Índice de infraestructura y despliegue](docs/deployment/README.md)
 - [Estimación mensual AWS](docs/deployment/aws-monthly-estimate.md)
-- [Runbook local](docs/operations/local-runbook.md)
 - [Informe de validación local](docs/operations/local-validation-report.md)
+- [Registro consolidado de implementación y entrega](docs/operations/project-delivery-record.md)
 - [Foundation CloudFormation](infra/cloudformation/README.md)
 - [CloudFormation modular](infra/cloudformation/phases/README.md)
 

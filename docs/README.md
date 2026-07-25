@@ -10,7 +10,7 @@ Este índice reúne la documentación vigente del repositorio. El flujo local co
 | Entender la arquitectura completa | [Índice de arquitectura](architecture/README.md) |
 | Consultar el diagrama editable AWS | [Diagrama Draw.io](architecture/sentinelmonitoria-aws-architecture.drawio) |
 | Revisar el despliegue por fases | [Índice de despliegue](deployment/README.md) |
-| Operar y validar el entorno local | [Runbook local](operations/local-runbook.md) · [Informe de validación](operations/local-validation-report.md) |
+| Operar y validar el entorno local | [Runbook local](operations/local-runbook.md) · [Informe de validación](operations/local-validation-report.md) · [Registro consolidado de entrega](operations/project-delivery-record.md) |
 | Usar el backend o el agente | [Guía del backend](../backend/README.md) · [Guía del agente](../agent/README.md) |
 | Leer el manual ejecutivo | [Manual Markdown](manual/SentinelMonitorIA-Manual-Ejecutivo.md) · [Manual PDF](manual/SentinelMonitorIA-Manual-Ejecutivo.pdf) |
 
@@ -40,6 +40,7 @@ La foundation monolítica y los stacks modulares son alternativas excluyentes pa
 
 - [Runbook local y preproducción](operations/local-runbook.md): arranque, comprobaciones, perfiles y recuperación.
 - [Informe de validación local](operations/local-validation-report.md): evidencia de las comprobaciones realizadas.
+- [Registro consolidado de implementación y entrega](operations/project-delivery-record.md): cronología, cambios funcionales, correcciones, evidencia de validación y estado Git.
 - [Seguridad de configuración local](../README.md#seguridad-de-configuración): secretos de desarrollo, JWT, CORS y límites de exposición.
 - [Seguridad y límites actuales](../README.md#seguridad-y-límites-actuales): sesiones, API keys, Redis y perfil `local-production`.
 - [Secretos y seguridad AWS](deployment/cloudformation-phased-plan.md#secretos): Secrets Manager, roles IAM, subnets privadas y límites de la propuesta.
@@ -56,7 +57,8 @@ Reglas operativas principales:
 
 - **Validado:** desarrollo local, contratos principales, reglas de análisis, persistencia de alertas, workers Redis, parser local de templates YAML, matriz JSON de parámetros, paridad de parámetros, referencias cross-stack y formato Git.
 - **Preparado:** infraestructura CloudFormation modular `00`–`22`, arquitectura AWS, integración opcional Ollama/Bedrock, notificaciones y coste estimado.
-- **No ejecutado:** `aws cloudformation validate-template`, creación o actualización de stacks, despliegue de recursos, configuración de DNS productivo, llamadas reales a Bedrock y commit/push automático.
+- **No ejecutado:** `aws cloudformation validate-template`, creación o actualización de stacks, despliegue de recursos, configuración de DNS productivo y llamadas reales a Bedrock.
+- **Entrega Git de la fase validada:** commit `bade50226322a7dc2560e59068e59434b9948212` en `main`, publicado en `origin/main` durante la verificación previa al registro consolidado.
 - **Fuera del alcance inicial:** creación automática de OpenSearch/Knowledge Base/vector store, SQS gestionado, WAF, NAT Gateway, Multi-AZ completo, réplicas Redis y autoscaling avanzado.
 
 ## Convenciones de lectura
