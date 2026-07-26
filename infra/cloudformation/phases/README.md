@@ -1,5 +1,7 @@
 # CloudFormation por fases
 
+**Última actualización:** 23 de julio de 2026, 21:59 (UTC-05:00)
+
 Los templates de este directorio son una alternativa modular a `../sentinel-monitoria-foundation.yaml`. Ejecutar sólo una estrategia por ambiente: foundation monolítica **o** fases modulares.
 
 ## Orden
@@ -67,14 +69,20 @@ La fase 14 puede usar el dominio predeterminado de CloudFront sin hosted zone ni
 Desde la raíz, después de configurar credenciales AWS de forma segura:
 
 ```powershell
-.\scripts\aws-preflight.ps1
+# Validación base (00-14) sin incluir extensiones opcionales.
 .\scripts\validate-cloudformation.ps1
+
+# Validación completa incluyendo IA y notificaciones (19-22).
+.\scripts\validate-cloudformation.ps1 -IncludeAiNotifications
+
 .\scripts\deploy-cloudformation-phases.ps1
 .\scripts\build-push-ecr.ps1 -ImageTag v0.1.0
 .\scripts\run-aws-migration.ps1
 .\scripts\publish-frontend.ps1
 ```
 
+`deploy-cloudformation-phases.ps1` despliega `00-14` por defecto. Las fases `19-22` se pueden ejecutar individualmente con `-Phase` o incluir en el recorrido con `-IncludeAiNotifications`; las fases opcionales de dominio `15-18` no se agregan al recorrido automático. Para el primer despliegue de IA/notificaciones, mantener `DesiredCount=0` en `11`, `12`, `21` y `22`, ejecutar la migración y después activar los cuatro servicios.
+
 Los scripts no contienen access keys ni secretos. El stack name usa el prefijo `sentinel-monitoria-` para que los roles generados por CloudFormation coincidan con la restricción de `iam:PassRole`. `aws-preflight.ps1` espera inicialmente la cuenta `952763303883` y el usuario `arn:aws:iam::952763303883:user/ramonesj`; usar `-AllowDifferentPrincipal` sólo si se cambia deliberadamente al rol de despliegue.
 
-No hay credenciales en estos archivos. Los secretos de datos y aplicación se generan en Secrets Manager en las fases correspondientes.
+No hay credenciales en estos archivos. Los secretos de datos, aplicación y canales de notificación se generan en Secrets Manager en las fases correspondientes; las URLs de canales y credenciales SMTP deben completarse fuera de Git.

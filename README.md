@@ -19,6 +19,7 @@ Plataforma para autenticar usuarios, administrar organizaciones, recibir telemet
   <a href="#api-keys-y-conexión-de-agentes">API keys</a> ·
   <a href="#contrato-de-telemetry">Telemetry</a> ·
   <a href="#inteligencia-y-alertas">IA y alertas</a> ·
+  <a href="#alcance-aws-y-fases-de-implementación">AWS y fases</a> ·
   <a href="#roadmap">Roadmap</a>
 </p>
 
@@ -32,6 +33,8 @@ Plataforma para autenticar usuarios, administrar organizaciones, recibir telemet
 </div>
 
 > **Fuente de verdad:** esta guía describe el estado real del repositorio. Las capacidades marcadas como futuras o preparatorias no forman parte del flujo local validado.
+>
+> **Última actualización:** 23 de julio de 2026, 21:59 (UTC-05:00). El desarrollo local y la preparación CloudFormation están validados offline; no se han ejecutado operaciones AWS.
 
 ## Navegación documental
 
@@ -43,6 +46,7 @@ La documentación centralizada está en [`docs/README.md`](docs/README.md). Desd
 - [Despliegue CloudFormation por fases](docs/deployment/cloudformation-phased-plan.md)
 - [Índice de infraestructura y despliegue](docs/deployment/README.md)
 - [Estimación mensual AWS](docs/deployment/aws-monthly-estimate.md)
+- [Runbook local y preproducción](docs/operations/local-runbook.md)
 - [Informe de validación local](docs/operations/local-validation-report.md)
 - [Registro consolidado de implementación y entrega](docs/operations/project-delivery-record.md)
 - [Foundation CloudFormation](infra/cloudformation/README.md)
@@ -69,13 +73,21 @@ En la práctica, permite que una persona cree una organización desde el dashboa
 | Conectar agentes | Emitir, listar, rotar y revocar API keys desde `Connections`; las keys tienen scopes explícitos. |
 | Recibir observabilidad | Ingerir métricas, logs y eventos mediante `/api/v1/telemetry`. |
 | Operar el entorno | Consultar health, métricas, colas mock y servicios Docker. |
+| Analizar y notificar | Ejecutar reglas locales, generar alertas, reconocerlas y probar entregas multicanal sin acciones automáticas. |
+| Consultar el sistema | Usar el chatbot autenticado con contexto limitado por organización y proveedor `rules`. |
 | Trabajar localmente | Ejecutar todo con Windows, Docker Compose, PostgreSQL y Redis; sin AWS real. |
 
 ### Qué representa ahora
 
-El núcleo local sigue siendo de desarrollo, pero ya incluye una primera capa AIOps asíncrona: reglas para detectar señales de CPU, memoria, logs y eventos; persistencia de `AIAnalysis` y `Alert`; entregas idempotentes; y canales de log, Email/SMTP, Webhooks, Slack, Discord, Teams y WebSocket. Ollama y Bedrock son proveedores opcionales para explicaciones y contexto RAG. Las acciones automáticas permanecen desactivadas.
+El núcleo local sigue siendo de desarrollo, pero ya incluye una primera plataforma AIOps asíncrona: reglas para detectar señales de CPU, memoria, logs y eventos; persistencia de `AIAnalysis`, `Alert` y `NotificationDelivery`; deduplicación; reintentos; dead-letter; canales multicanal y chatbot autenticado. Ollama y Bedrock son proveedores opcionales para explicaciones y contexto RAG. Las acciones automáticas permanecen desactivadas (`AI_ENABLE_ACTIONS=false` y `CHAT_ENABLE_ACTIONS=false`).
 
-AWS/Bedrock, S3 de archivo, IAM, workers ECS y notificaciones tienen fases CloudFormation `19`–`22` preparadas y validadas offline. No forman parte de un despliegue realizado. El Knowledge Base/vector store persistente debe configurarse de forma explícita porque implica decisiones de embeddings, índice, retención y coste.
+La ruta AWS está preparada en 23 stacks CloudFormation numerados `00`–`22` y se conecta mediante exports/imports en la misma cuenta y región:
+
+- `00`–`14`: red, NAT, seguridad, IAM, ECR, RDS, Redis TLS, secretos, observabilidad, ALB, ECS, backend, workers, S3 y CloudFront.
+- `15`–`18`: Route 53, ACM, HTTPS y registros DNS para un dominio propio; son opcionales.
+- `19`–`22`: plataforma IA, secreto/SNS de notificaciones, AI worker y notification worker; son opcionales y se activan después de la migración.
+
+La fase 14 permite comenzar con el DNS predeterminado `*.cloudfront.net`, sin dominio propio. Las fases 19–22 están preparadas y validadas offline, pero no forman parte de un despliegue realizado. El Knowledge Base/vector store persistente debe configurarse de forma explícita porque implica decisiones de embeddings, índice, retención y coste.
 
 ## Cómo funciona
 
@@ -158,7 +170,16 @@ Endpoints disponibles:
 
 - `GET /api/v1/alerts`: lista alertas de las organizaciones del usuario.
 - `POST /api/v1/alerts/{alert_id}/acknowledge`: reconoce una alerta sin ejecutar acciones.
-- `WS /api/v1/alerts/ws?access_token=...`: novedades de alertas para el dashboard.
+- `WS /api/v1/alerts/ws`: novedades de alertas para el dashboard; el cliente autentica enviando el JWT en el primer mensaje JSON, no en la URL ni en un query string sensible.
+
+El handshake esperado es:
+
+```json
+{
+  "type": "authenticate",
+  "access_token": "ACCESS_JWT"
+}
+```
 
 La guía de arquitectura y el contrato de despliegue están en [`docs/architecture/README.md`](docs/architecture/README.md) y [`docs/deployment/cloudformation-phased-plan.md`](docs/deployment/cloudformation-phased-plan.md).
 
@@ -195,9 +216,37 @@ Lex + Bedrock, Knowledge Base y acciones controladas están preparados como evol
 | API keys | Implementado | Creación, listado, scopes, rotación explícita, revocación y validación persistida para telemetry. |
 | Ingestión telemetry | Implementado localmente | Requiere una API key asociada a una organización. |
 | Agente Vector | Validado localmente | Configuración normal Vector `0.36.0` validada por esquema; pipeline E2E aislado con fixture JSONL, API key `telemetry:write`, Redis Streams, worker y persistencia PostgreSQL. La ejecución de fuentes host/journald/Docker queda pendiente en un host Linux real. |
-| AWS/Bedrock/S3 | Preparado offline | Fases CloudFormation `19`–`22` para archivo IA, IAM Bedrock, workers ECS y notificaciones; no desplegado. |
+| AWS base `00`–`14` | Preparado offline | VPC, NAT, IAM, ECR, RDS, Redis TLS, ECS, ALB, S3 y CloudFront predeterminado; no desplegado. |
+| AWS dominio `15`–`18` | Opcional | Route 53, ACM, HTTPS y DNS propio; requiere dominio y certificados. |
+| AWS IA/notificaciones `19`–`22` | Preparado offline | S3 de archivo, rol Bedrock, secreto/SNS, AI worker y notification worker; opt-in y no desplegado. |
 | Terraform/CDK | Pendiente | Directorios reservados para infraestructura futura. |
-| Pruebas automatizadas | Implementado localmente | Auth, API keys, contrato QueueMessage, productor/ACK, retries-DLQ y persistencia del worker Redis. |
+| Pruebas automatizadas | Implementado localmente | Backend: 19 pruebas correctas y 1 omitida por requerir Redis Streams; frontend: 9/9; smoke API: 9/9. |
+| Validación de infraestructura | Comprobada offline | 23 templates YAML, matriz JSON, scripts PowerShell, imports/exports y `git diff --check`; no validación contra una cuenta AWS. |
+
+## Alcance AWS y fases de implementación
+
+El diseño AWS usa una estrategia modular y excluyente respecto a `infra/cloudformation/sentinel-monitoria-foundation.yaml`: en un mismo ambiente se despliega la foundation monolítica **o** los stacks por fases, nunca ambos.
+
+| Bloque | Fases | Objetivo | Estado |
+|---|---:|---|---|
+| Base de aplicación | `00`–`14` | Publicar la aplicación con ECS/Fargate ARM64, RDS, Redis, ALB, S3 y CloudFront predeterminado | Preparado offline; no desplegado |
+| Dominio propio | `15`–`18` | Route 53, ACM, HTTPS directo del ALB y registros DNS | Opcional; requiere dominio y certificados |
+| IA y notificaciones | `19`–`22` | Archivo S3, permisos Bedrock, AI worker y notification worker | Preparado offline; opt-in |
+
+El script `scripts/deploy-cloudformation-phases.ps1` conserva `00–14` como recorrido predeterminado. Las fases `19–22` se ejecutan individualmente con `-Phase` o en conjunto con `-IncludeAiNotifications`; las fases `15–18` no se agregan automáticamente. El validador CloudFormation ofrece la misma selección, pero las llamadas a AWS sólo ocurren cuando se ejecuta explícitamente con credenciales.
+
+La secuencia segura para habilitar IA y notificaciones es:
+
+1. Crear `19-ai-platform` y `20-notification-platform`.
+2. Publicar la imagen worker ARM64 en ECR.
+3. Crear los servicios `11`, `12`, `21` y `22` con `DesiredCount=0`.
+4. Ejecutar `alembic upgrade head` mediante la tarea ECS one-off.
+5. Activar los cuatro servicios con `DesiredCount=1`.
+6. Empezar con `AiProvider=rules` y `NotificationChannels=log`; habilitar Bedrock o destinos externos sólo después de revisar permisos, secretos, conectividad y costes.
+
+Redis AWS usa `TransitEncryptionEnabled=true`; por eso ECS envía `REDIS_TLS=true` y el backend/workers usan `rediss://`. La imagen compartida del worker se construye para `linux/arm64`. El objetivo de coste inicial es mantener el staging dentro del presupuesto disponible de USD 100, sin contar variaciones de tráfico o servicios opcionales de Bedrock/vector store.
+
+No se han ejecutado `aws cloudformation validate-template`, Change Sets, despliegues, Bedrock, S3, Route 53, ACM ni llamadas AWS reales. La documentación, los 23 YAML, los parámetros JSON y los scripts se han comprobado offline.
 
 ## Arquitectura local
 
@@ -540,6 +589,8 @@ docker exec sentinel-backend alembic upgrade head
 docker exec sentinel-postgres psql -U sentinel -d sentinelmonitoria -tAc "SELECT version_num FROM alembic_version;"
 ```
 
+La revisión vigente comprobada en la validación local es `20260723_0005 (head)`. La migración `0005` reconcilia el esquema de telemetry sin borrar datos; las revisiones anteriores se conservan como historial de Alembic.
+
 `local` y `development` mantienen `create_all` como compatibilidad para el arranque actual; `local-production` no crea tablas automáticamente y depende del comando Alembic del contenedor. No uses `down -v` ni `start-local.ps1 -Clean` para aplicar migraciones.
 
 ## Autenticación local
@@ -832,7 +883,13 @@ La configuración normal pasa `vector validate` después de expandir sus variabl
 | `scripts/check-docker.ps1` | Comprueba Docker Desktop, Compose, daemon, WSL y hello-world |
 | `scripts/start-local.ps1` | Inicia, reconstruye, sigue logs o limpia el stack local; `-Frontend` añade Vite y `-Intelligence` añade Redis Streams, AI worker y notification worker |
 | `scripts/test-local.ps1` | Smoke check read-only de backend, observabilidad y frontend opcional |
-| `scripts/test-api.ps1` | Smoke test histórico de endpoints públicos y development |
+| `scripts/test-api.ps1` | Smoke test de endpoints públicos y development |
+| `scripts/aws-preflight.ps1` | Comprueba identidad, cuenta, región, zonas e IAM esperado cuando se ejecuta explícitamente |
+| `scripts/validate-cloudformation.ps1` | Valida CloudFormation base `00–14` o, con `-IncludeAiNotifications`, también `19–22` |
+| `scripts/deploy-cloudformation-phases.ps1` | Despliega stacks base y fases IA/notificaciones opcionales mediante Change Sets y parámetros |
+| `scripts/build-push-ecr.ps1` | Construye y publica imágenes ECR `linux/arm64` con tags inmutables |
+| `scripts/run-aws-migration.ps1` | Ejecuta Alembic en una tarea ECS one-off antes de activar servicios |
+| `scripts/publish-frontend.ps1` | Construye frontend con el dominio CloudFront, sincroniza S3 e invalida CloudFront |
 | `scripts/check-system.ps1` | Comprobación general antigua; puede requerir `docker-compose` legacy |
 | `scripts/build-agent.sh` | Construye imagen y paquetes del agente en Linux con Docker, dpkg y rpmbuild |
 
@@ -901,7 +958,9 @@ La suite actual usa `pytest`, `pytest-asyncio` y `httpx` contra el stack local. 
 - Compatibilidad y migración de una API key legacy almacenada en texto.
 - Revocación y rechazo posterior con `401`.
 
-La suite validada actualmente contiene 10 pruebas: auth/API keys, contrato `QueueMessage`, productor Redis, consumer group/ACK, retries/dead-letter y persistencia del worker con métricas, logs y eventos. Crea datos de prueba con identificadores únicos y no ejecuta `down -v` ni borra los volúmenes locales.
+La suite validada actualmente contiene 19 pruebas correctas y 1 omitida porque el stack predeterminado usa `QUEUE_PROVIDER=mock`; la prueba omitida requiere Redis Streams y el worker persistente. El frontend tiene 9/9 pruebas correctas, el smoke API tiene 9/9 comprobaciones y `scripts/test-local.ps1 -RequireFrontend` se validó con 8/8 comprobaciones. Crea datos de prueba con identificadores únicos y no ejecuta `down -v` ni borra los volúmenes locales.
+
+La preparación AWS se comprobó offline con el parseo de los 23 templates YAML, la matriz JSON, la sintaxis UTF-8 de los scripts PowerShell, los contratos de fases 19–22, Redis TLS en los cuatro workers ECS y `git diff --check`. Estas comprobaciones no sustituyen `aws cloudformation validate-template` ni una prueba en la cuenta real.
 
 Flujo de autenticación recomendado:
 
@@ -1050,14 +1109,15 @@ Esta configuración es para desarrollo local:
 
 Prioridad recomendada:
 
-1. Completar pruebas automatizadas de auth, API keys e ingestión.
-2. Implementar gestión de usuarios, organizaciones, permisos y revocación avanzada.
-3. Terminar integración E2E del agente Vector.
-4. Añadir históricos, alertas y visualizaciones avanzadas.
-5. Formalizar migraciones y observabilidad operativa.
-6. Integrar SQS/S3/OpenSearch mediante LocalStack y luego AWS.
-8. Preparar Terraform/CDK y despliegue productivo.
-9. Endurecer secretos, HTTPS, cookies, rate limiting y almacenamiento de credenciales.
+1. Mantener la cobertura local de auth, API keys, telemetry, Redis Streams, IA, notificaciones y frontend mediante pruebas reproducibles.
+2. Completar la validación del agente Vector con journald, archivos host y socket Docker en un host Linux real.
+3. Ejecutar el preflight AWS y validar los stacks base `00–14` en la cuenta autorizada, después de revisar credenciales, límites, backups y costes.
+4. Publicar imágenes ARM64 y habilitar `19–22` con `AiProvider=rules` y `NotificationChannels=log` antes de activar Bedrock o destinos externos.
+5. Configurar Bedrock Converse y, si el presupuesto lo permite, un Knowledge Base/vector store con embeddings, retención e índice definidos.
+6. Añadir dominio propio, Route 53, ACM y HTTPS directo mediante `15–18` cuando exista un dominio administrado.
+7. Evaluar SQS/EventBridge/OpenSearch gestionados, WAF, NAT Gateway, Multi-AZ, réplicas Redis y autoscaling para producción.
+8. Preparar Terraform/CDK y pipelines de CI/CD con validación de templates, imágenes ARM64, migraciones y rollback.
+9. Endurecer secretos, HTTPS, cookies, rate limiting, auditoría, retención de logs, backups y políticas IAM de mínimo privilegio.
 
 ## Manual ejecutivo y documentación adicional
 
@@ -1124,6 +1184,6 @@ Este proyecto ha sido realizado por los siguientes integrantes:
   </tr>
 </table>
 
-**Última actualización:** 23 de julio de 2026<br>
+**Última actualización:** 23 de julio de 2026, 21:59 (UTC-05:00)<br>
 **Copyright © 2026 SentinelMonitorIA.** Todos los derechos reservados.<br>
 Distribuido bajo la [Licencia Apache 2.0](LICENSE).

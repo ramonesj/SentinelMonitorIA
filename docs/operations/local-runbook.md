@@ -1,5 +1,7 @@
 # SentinelMonitorIA: runbook local y preproducción
 
+**Última actualización:** 23 de julio de 2026, 21:59 (UTC-05:00)
+
 Este runbook cubre las operaciones que pueden ejecutarse sin AWS. No contiene secretos reales y no sustituye un procedimiento de despliegue cloud.
 
 ## Prerrequisitos
@@ -60,7 +62,7 @@ docker exec sentinel-backend-local-production alembic current
 Invoke-RestMethod http://localhost:8000/health
 ```
 
-El resultado esperado es `20260723_0003 (head)` y `status: healthy`, con PostgreSQL y Redis saludables. Para detenerlo sin eliminar datos:
+El resultado esperado es `20260723_0005 (head)` y `status: healthy`, con PostgreSQL y Redis saludables. La revisión `0005` es la migración vigente; no se debe sustituir por la revisión histórica `0003`. Para detenerlo sin eliminar datos:
 
 ```powershell
 docker compose --env-file backend\.env.local-production -f backend\docker-compose.local-production.yml down

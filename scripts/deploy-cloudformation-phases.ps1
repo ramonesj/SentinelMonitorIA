@@ -9,6 +9,7 @@ param(
     [string]$Phase = "",
     [string[]]$SkipPhase = @(),
     [string[]]$AdditionalParameterOverride = @(),
+    [switch]$IncludeAiNotifications,
     [switch]$StopServices,
     [switch]$NoExecuteChangeSet
 )
@@ -18,7 +19,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $phaseRoot = Join-Path $root "infra\cloudformation\phases"
 $matrixPath = Join-Path $phaseRoot "parameters.example.json"
 
-$phaseOrder = @(
+$basePhaseOrder = @(
     "00-vpc-network",
     "01-nat-instance",
     "02-security-groups",
@@ -35,6 +36,17 @@ $phaseOrder = @(
     "13-frontend-s3",
     "14-cloudfront"
 )
+$aiNotificationPhaseOrder = @(
+    "19-ai-platform",
+    "20-notification-platform",
+    "21-ecs-ai-worker",
+    "22-ecs-notification-worker"
+)
+$allPhaseOrder = @($basePhaseOrder + $aiNotificationPhaseOrder)
+$selectedPhaseOrder = @($basePhaseOrder)
+if ($IncludeAiNotifications) {
+    $selectedPhaseOrder += $aiNotificationPhaseOrder
+}
 
 function Convert-ParameterValue {
     param([AllowNull()][object]$Value)
@@ -62,7 +74,12 @@ function Get-PhaseParameterOverrides {
         }
     }
 
-    if ($StopServices -and $PhaseName -in @("11-ecs-backend", "12-ecs-worker")) {
+    if ($StopServices -and $PhaseName -in @(
+            "11-ecs-backend",
+            "12-ecs-worker",
+            "21-ecs-ai-worker",
+            "22-ecs-notification-worker"
+        )) {
         $values["DesiredCount"] = "0"
     }
 
@@ -82,12 +99,12 @@ if (-not (Test-Path $matrixPath)) {
 }
 
 if ($Phase) {
-    if ($Phase -notin $phaseOrder) {
-        throw "Phase '$Phase' is not in the base deployment order 00-14."
+    if ($Phase -notin $allPhaseOrder) {
+        throw "Phase '$Phase' is not supported. Use a base phase 00-14 or an optional phase 19-22."
     }
     $selectedPhases = @($Phase)
 } else {
-    $selectedPhases = @($phaseOrder | Where-Object { $_ -notin $SkipPhase })
+    $selectedPhases = @($selectedPhaseOrder | Where-Object { $_ -notin $SkipPhase })
 }
 
 $awsPrefix = @()
@@ -139,5 +156,5 @@ foreach ($phaseName in $selectedPhases) {
 
 Write-Host "CloudFormation phase command completed." -ForegroundColor Green
 if ($StopServices) {
-    Write-Host "ECS backend and worker were requested with DesiredCount=0. Run the migration before redeploying them with DesiredCount=1." -ForegroundColor Yellow
+    Write-Host "ECS backend, telemetry worker, AI worker and notification worker were requested with DesiredCount=0. Run the migration before redeploying them with DesiredCount=1." -ForegroundColor Yellow
 }

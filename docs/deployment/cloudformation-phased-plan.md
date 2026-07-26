@@ -1,5 +1,7 @@
 # CloudFormation modular por fases
 
+**Última actualización:** 23 de julio de 2026, 21:59 (UTC-05:00)
+
 Esta es la ruta modular para desplegar SentinelMonitorIA en `us-east-1` sin una plantilla monolítica. Cada archivo de `infra/cloudformation/phases/` es un stack independiente. Los stacks se conectan mediante exports/imports de CloudFormation con el prefijo:
 
 ```text
@@ -97,16 +99,17 @@ Los archivos no tienen credenciales AWS. Los únicos valores sensibles se genera
 
 ## Preparación de imágenes y runtime
 
-Antes de activar las fases 11 y 12:
+Antes de activar las fases 11, 12, 21 y 22:
 
 1. Crear ECR con la fase 04.
-2. Construir las imágenes para `linux/arm64`, porque las task definitions usan ARM64.
+2. Construir las imágenes para `linux/arm64`, porque todas las task definitions ECS usan ARM64.
 3. Publicar tags inmutables en ECR con `.\scripts\build-push-ecr.ps1`.
-4. Pasar el mismo tag publicado como `BackendImageTag` y `WorkerImageTag`.
-5. Mantener `RedisTls=true` en ECS: la fase 06 usa `TransitEncryptionEnabled=true` y el backend utiliza `rediss://` con verificación de certificado.
-6. Ejecutar Alembic como una tarea ECS one-off antes de activar el backend y el worker.
+4. Pasar el mismo tag publicado como `BackendImageTag` y `WorkerImageTag`; la imagen worker compartida sirve para telemetría, análisis IA y notificaciones.
+5. Mantener `RedisTls=true` en ECS: la fase 06 usa `TransitEncryptionEnabled=true` y los workers utilizan `rediss://` con verificación de certificado.
+6. Mantener `AiProvider=rules` y `NotificationChannels=log` durante la primera prueba para no activar Bedrock ni destinos externos.
+7. Ejecutar Alembic como una tarea ECS one-off antes de activar backend, telemetry worker, AI worker y notification worker. Las migraciones `0004` y `0005` crean las tablas requeridas por IA y alertas.
 
-El backend y el worker comparten `backend/Dockerfile`; sólo cambia el comando del contenedor worker. `backend/alembic.ini` es parte del runtime y no debe quedar excluido por `.gitignore`.
+El backend y los tres workers comparten `backend/Dockerfile`; sólo cambia el comando del contenedor. `backend/alembic.ini` es parte del runtime y no debe quedar excluido por `.gitignore`.
 
 ## Flujo recomendado sin dominio propio
 
@@ -114,34 +117,45 @@ La cuenta de despliegue debe validarse primero. El preflight espera la cuenta `9
 
 ```powershell
 .\scripts\aws-preflight.ps1
-.\scripts\validate-cloudformation.ps1
+.\scripts\validate-cloudformation.ps1 -IncludeAiNotifications
 ```
 
-Para revisar un Change Set sin ejecutarlo, usar la fase individual con `-NoExecuteChangeSet`. La secuencia base recomendada es:
+Para revisar un Change Set sin ejecutarlo, usar la fase individual con `-NoExecuteChangeSet`. La secuencia segura recomendada es:
 
 ```powershell
 # Red, seguridad, IAM, ECR, datos, secretos, logs, ALB y cluster.
+# Se dejan fuera los servicios, frontend y CloudFront para preparar el runtime.
 .\scripts\deploy-cloudformation-phases.ps1 `
   -SkipPhase 11-ecs-backend,12-ecs-worker,13-frontend-s3,14-cloudfront
+
+# Crear la plataforma opcional de IA y notificaciones.
+.\scripts\deploy-cloudformation-phases.ps1 -Phase 19-ai-platform
+.\scripts\deploy-cloudformation-phases.ps1 -Phase 20-notification-platform
 
 # Publicar ambas imágenes ARM64 con un tag inmutable.
 .\scripts\build-push-ecr.ps1 -ImageTag v0.1.0
 
-# Crear task definitions y servicios detenidos para poder migrar RDS.
+# Crear task definitions y los cuatro servicios detenidos para poder migrar RDS.
 .\scripts\deploy-cloudformation-phases.ps1 -Phase 11-ecs-backend -StopServices
 .\scripts\deploy-cloudformation-phases.ps1 -Phase 12-ecs-worker -StopServices
+.\scripts\deploy-cloudformation-phases.ps1 -Phase 21-ecs-ai-worker -StopServices
+.\scripts\deploy-cloudformation-phases.ps1 -Phase 22-ecs-notification-worker -StopServices
 
 # Ejecutar la migración contra RDS usando la red privada y los secretos ECS.
 .\scripts\run-aws-migration.ps1
 
-# Activar los servicios después de confirmar Alembic.
+# Activar backend y workers después de confirmar Alembic.
 .\scripts\deploy-cloudformation-phases.ps1 -Phase 11-ecs-backend
 .\scripts\deploy-cloudformation-phases.ps1 -Phase 12-ecs-worker
+.\scripts\deploy-cloudformation-phases.ps1 -Phase 21-ecs-ai-worker
+.\scripts\deploy-cloudformation-phases.ps1 -Phase 22-ecs-notification-worker
 
 # Crear el bucket y la distribución CloudFront.
 .\scripts\deploy-cloudformation-phases.ps1 -Phase 13-frontend-s3
 .\scripts\deploy-cloudformation-phases.ps1 -Phase 14-cloudfront
 ```
+
+`-IncludeAiNotifications` amplía el recorrido normal `00-14` con `19-22`, pero no sustituye la migración ni la configuración de secretos. Para una primera puesta en marcha es más seguro usar las fases opcionales individualmente con `-StopServices`, como en la secuencia anterior. Bedrock se mantiene desactivado con `AiProvider=rules` y los destinos externos con `NotificationChannels=log` hasta confirmar costes, permisos y conectividad.
 
 La fase 14 usa una CloudFront Function de viewer request para reescribir rutas SPA sin extensión a `/index.html`. No usa `CustomErrorResponses` globales, por lo que los errores `401`, `403` y `404` de la API conservan su respuesta original.
 
@@ -169,7 +183,7 @@ python -c "import json; json.load(open('infra/cloudformation/phases/parameters.e
 .\scripts\validate-cloudformation.ps1
 ```
 
-`validate-cloudformation.ps1`, `aws-preflight.ps1` y los scripts de publicación realizan llamadas AWS sólo cuando se ejecutan explícitamente con credenciales configuradas. No ejecutar las fases 11–12 hasta confirmar imágenes, secretos, RDS, Redis, target group, logs y migración completada.
+`validate-cloudformation.ps1`, `aws-preflight.ps1` y los scripts de publicación realizan llamadas AWS sólo cuando se ejecutan explícitamente con credenciales configuradas. Usa `validate-cloudformation.ps1 -IncludeAiNotifications` para incluir 19–22 en la validación. No ejecutar las fases 11, 12, 21 ni 22 con `DesiredCount=1` hasta confirmar imágenes ARM64, secretos, RDS, Redis TLS, target group, logs y migración completada.
 
 ## Rollback y limpieza
 

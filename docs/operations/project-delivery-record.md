@@ -1,5 +1,7 @@
 # Registro consolidado de implementación y validación
 
+**Última actualización:** 23 de julio de 2026, 21:59 (UTC-05:00)
+
 Este documento consolida el trabajo realizado en SentinelMonitorIA: funcionalidades implementadas, correcciones aplicadas, decisiones técnicas, validaciones locales, límites de AWS y estado final de Git. Es el cierre operativo de la fase local y complementa el [runbook local](local-runbook.md) y el [informe de validación](local-validation-report.md).
 
 ## Alcance y límites
@@ -238,7 +240,7 @@ Se añadieron herramientas operativas sin credenciales en `scripts/`:
 
 - `aws-preflight.ps1`: verifica cuenta `952763303883`, usuario esperado, región y zonas disponibles cuando se ejecuta explícitamente.
 - `validate-cloudformation.ps1`: valida las plantillas mediante CloudFormation.
-- `deploy-cloudformation-phases.ps1`: ejecuta stacks `00`–`14`, con nombres `sentinel-monitoria-*`, parámetros y Change Sets no ejecutados.
+- `deploy-cloudformation-phases.ps1`: ejecuta los stacks base `00`–`14` por defecto y acepta `19`–`22` individualmente o mediante `-IncludeAiNotifications`, con nombres `sentinel-monitoria-*`, parámetros y Change Sets no ejecutados.
 - `build-push-ecr.ps1`: construye y publica imágenes `linux/arm64`.
 - `run-aws-migration.ps1`: ejecuta Alembic en ECS.
 - `publish-frontend.ps1`: compila con el hostname CloudFront, sincroniza S3 e invalida la distribución.
@@ -253,6 +255,7 @@ No se desplegaron recursos AWS. Quedan preparados o documentados, pero requieren
 - Bedrock Knowledge Base y vector store persistente para RAG.
 - S3 para archivo de telemetry.
 - SQS/EventBridge/OpenSearch gestionados.
+- Fases CloudFormation `19`–`22`: bucket S3 y rol Bedrock, secreto/SNS de notificaciones, AI worker y notification worker; preparadas offline y opt-in, no desplegadas.
 - ECS/Fargate, RDS, ElastiCache, ALB, CloudFront, Route 53, ACM, IAM y Secrets Manager.
 - WAF, Multi-AZ completo, réplicas Redis y autoscaling avanzado.
 - Validación del agente Vector con journald, archivos host y socket Docker en un Linux real.
@@ -261,16 +264,16 @@ La foundation monolítica y las fases CloudFormation `00`–`22` son alternativa
 
 ## Estado Git actual
 
-El último commit publicado continúa siendo:
+El registro no fija el hash del commit que contiene esta misma actualización para evitar que la documentación quede obsoleta inmediatamente después de publicarla. La integración parte del commit de base `6fa93a3` (`Prepare AWS deployment workflow and runtime fixes`). Para comprobar el estado real después del commit y el push:
 
-```text
-Commit: bade50226322a7dc2560e59068e59434b9948212
-Mensaje: Complete local observability and AI platform
-Rama: main
-Remoto: origin/main
+```powershell
+git status --short --branch
+git log -1 --oneline
+git rev-parse HEAD
+git ls-remote origin refs/heads/main
 ```
 
-La preparación AWS actual contiene cambios locales pendientes en templates, backend, ejemplos, documentación y scripts. `backend/alembic.ini` dejó de estar excluido por `.gitignore` y debe incluirse en el próximo commit para que las imágenes construidas desde un checkout limpio puedan ejecutar Alembic. No se creó commit ni push durante esta corrección; el estado debe revisarse antes de entregar o desplegar.
+`backend/alembic.ini` forma parte del flujo publicado y permite que las imágenes construidas desde un checkout limpio ejecuten Alembic. Las fases 19–22, sus parámetros, Redis TLS y la documentación ampliada deben permanecer coherentes con el commit que finalmente se publique.
 
 ## Referencias
 

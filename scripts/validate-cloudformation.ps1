@@ -2,13 +2,14 @@
 param(
     [string]$Region = "us-east-1",
     [string]$Profile = "",
-    [string]$Phase = ""
+    [string]$Phase = "",
+    [switch]$IncludeAiNotifications
 )
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $phaseRoot = Join-Path $root "infra\cloudformation\phases"
-$phaseOrder = @(
+$basePhaseOrder = @(
     "00-vpc-network",
     "01-nat-instance",
     "02-security-groups",
@@ -25,6 +26,17 @@ $phaseOrder = @(
     "13-frontend-s3",
     "14-cloudfront"
 )
+$aiNotificationPhaseOrder = @(
+    "19-ai-platform",
+    "20-notification-platform",
+    "21-ecs-ai-worker",
+    "22-ecs-notification-worker"
+)
+$allPhaseOrder = @($basePhaseOrder + $aiNotificationPhaseOrder)
+$selectedPhaseOrder = @($basePhaseOrder)
+if ($IncludeAiNotifications) {
+    $selectedPhaseOrder += $aiNotificationPhaseOrder
+}
 
 if (-not (Get-Command aws -ErrorAction SilentlyContinue)) {
     throw "AWS CLI is not available."
@@ -34,12 +46,12 @@ if ($Region -ne "us-east-1") {
 }
 
 if ($Phase) {
-    if ($Phase -notin $phaseOrder) {
-        throw "Phase '$Phase' is not in the base deployment order 00-14."
+    if ($Phase -notin $allPhaseOrder) {
+        throw "Phase '$Phase' is not supported. Use a base phase 00-14 or an optional phase 19-22."
     }
     $selectedPhases = @($Phase)
 } else {
-    $selectedPhases = $phaseOrder
+    $selectedPhases = @($selectedPhaseOrder)
 }
 
 $awsPrefix = @()

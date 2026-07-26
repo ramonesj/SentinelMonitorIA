@@ -1,5 +1,7 @@
 # Despliegue e infraestructura AWS
 
+**Última actualización:** 23 de julio de 2026, 21:59 (UTC-05:00)
+
 Esta sección documenta cómo está organizada la infraestructura declarativa de SentinelMonitorIA. El repositorio conserva dos alternativas: una foundation CloudFormation monolítica y una implementación modular por fases. Ambas describen el mismo entorno lógico y **no deben desplegarse juntas**.
 
 ## Documentos principales
@@ -65,11 +67,12 @@ El catálogo completo, los parámetros y los exports/imports se mantienen en [`i
 3. Crear datos, secretos y observabilidad (`05`–`08`).
 4. Crear entrada y cluster ECS (`09`–`10`).
 5. Publicar imágenes ARM64 en ECR.
-6. Crear las task definitions 11/12 con `DesiredCount=0`, ejecutar la migración Alembic como tarea ECS one-off y después activar backend/worker.
-7. Crear S3 y CloudFront (`13`–`14`), actualizar CORS con el hostname CloudFront y publicar `frontend/dist`.
-8. Añadir dominio y HTTPS sólo después de confirmar dominio, región y certificados (`15`–`18`).
+6. Si se habilita IA/notificaciones, crear sus recursos base (`19`–`20`) con el mismo proyecto, entorno y región.
+7. Crear las task definitions `11`, `12`, `21` y `22` con `DesiredCount=0`, ejecutar la migración Alembic como tarea ECS one-off y después activar los cuatro servicios.
+8. Crear S3 y CloudFront (`13`–`14`), actualizar CORS con el hostname CloudFront y publicar `frontend/dist`.
+9. Añadir dominio y HTTPS sólo después de confirmar dominio, región y certificados (`15`–`18`).
 
-Cada stack exporta valores con el prefijo del proyecto y del entorno, y los consumidores los importan mediante contratos explícitos. La matriz de parámetros debe revisarse como un conjunto; no se deben mezclar valores de foundation con los de fases modulares.
+El despliegue conserva `00`–`14` como recorrido predeterminado. Las fases `19`–`22` se habilitan individualmente o mediante `-IncludeAiNotifications`; no se ejecutan automáticamente junto con la base para evitar arrancar workers antes de las migraciones. Cada stack exporta valores con el prefijo del proyecto y del entorno, y los consumidores los importan mediante contratos explícitos. La matriz de parámetros debe revisarse como un conjunto; no se deben mezclar valores de foundation con los de fases modulares.
 
 ## Costes documentados
 
@@ -77,7 +80,7 @@ Cada stack exporta valores con el prefijo del proyecto y del entorno, y los cons
 - Tres días de ejecución estimados: **USD 7.40–8.88**, antes de créditos, impuestos y variaciones de tráfico.
 - Foundation solamente: **USD 35–55/mes**.
 
-Estos importes son estimaciones de planificación, no facturas ni garantías de precio. Antes de crear recursos deben revisarse región, horas, almacenamiento, snapshots, tráfico, logs, NAT, CloudFront, S3, Bedrock, OpenSearch/Knowledge Base y créditos disponibles. Bedrock y el vector store añaden coste variable o fijo adicional; mantener `AiProvider=rules` reduce el coste de staging.
+Estos importes son estimaciones de planificación, no facturas ni garantías de precio. Antes de crear recursos deben revisarse región, horas, almacenamiento, snapshots, tráfico, logs, NAT, CloudFront, S3, Bedrock, OpenSearch/Knowledge Base y créditos disponibles. Las fases `21` y `22` añaden dos servicios ECS y sus logs; mantener `DesiredCount=0` durante preparación y `AiProvider=rules`/`NotificationChannels=log` durante la prueba reduce el coste variable. Bedrock y el vector store añaden coste variable o fijo adicional; mantener `AiProvider=rules` reduce el coste de staging.
 
 ## Inteligencia y notificaciones
 

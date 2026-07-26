@@ -32,6 +32,11 @@ Parameters:
     Default: 1
     MinValue: 0
     MaxValue: 10
+  RedisTls:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Enable TLS for AWS ElastiCache Redis.
   LogLevel:
     Type: String
     Default: info
@@ -110,6 +115,8 @@ Resources:
               Value: '6379'
             - Name: REDIS_DB
               Value: '0'
+            - Name: REDIS_TLS
+              Value: !Ref RedisTls
             - Name: REDIS_STREAM_PREFIX
               Value: sentinel:stream
             - Name: REDIS_STREAM_MAX_LENGTH

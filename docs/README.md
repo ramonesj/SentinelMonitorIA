@@ -1,5 +1,7 @@
 # Documentación de SentinelMonitorIA
 
+**Última actualización:** 23 de julio de 2026, 21:59 (UTC-05:00)
+
 Este índice reúne la documentación vigente del repositorio. El flujo local con Windows + Docker es el estado validado actualmente; la arquitectura AWS y sus templates CloudFormation describen una ruta de despliegue preparada y validada offline, pero **no se han desplegado recursos AWS**.
 
 ## Inicio por objetivo
@@ -55,10 +57,11 @@ Reglas operativas principales:
 
 ## Estado documental y alcance
 
-- **Validado:** desarrollo local, contratos principales, reglas de análisis, persistencia de alertas, workers Redis, parser local de templates YAML, matriz JSON de parámetros, paridad de parámetros, referencias cross-stack y formato Git.
-- **Preparado:** infraestructura CloudFormation modular `00`–`22`, arquitectura AWS, integración opcional Ollama/Bedrock, notificaciones y coste estimado.
+- **Validado:** desarrollo local, contratos principales, reglas de análisis, persistencia de alertas, workers Redis, 23 templates YAML, matriz JSON de parámetros, sintaxis PowerShell, paridad de parámetros, referencias cross-stack y formato Git.
+- **Resultados locales:** backend con 19 pruebas correctas y 1 omitida por requerir Redis Streams; frontend 9/9; smoke API 9/9; smoke local con frontend 8/8.
+- **Preparado:** infraestructura CloudFormation modular `00`–`22`, arquitectura AWS, integración opcional Ollama/Bedrock, Redis TLS, workers ARM64, notificaciones y coste estimado.
 - **No ejecutado:** `aws cloudformation validate-template`, creación o actualización de stacks, despliegue de recursos, configuración de DNS productivo y llamadas reales a Bedrock.
-- **Entrega Git de la fase validada:** commit `bade50226322a7dc2560e59068e59434b9948212` en `main`, publicado en `origin/main` durante la verificación previa al registro consolidado.
+- **Historial de base:** la ampliación parte del commit publicado `6fa93a3` (`Prepare AWS deployment workflow and runtime fixes`); el estado actual debe verificarse con los comandos Git del registro de entrega.
 - **Fuera del alcance inicial:** creación automática de OpenSearch/Knowledge Base/vector store, SQS gestionado, WAF, NAT Gateway, Multi-AZ completo, réplicas Redis y autoscaling avanzado.
 
 ## Convenciones de lectura

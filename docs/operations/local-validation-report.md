@@ -1,5 +1,7 @@
 # Informe de validación local
 
+**Última actualización:** 23 de julio de 2026, 21:59 (UTC-05:00)
+
 Este informe registra el estado verificable de SentinelMonitorIA después de completar las mejoras locales. No se desplegaron recursos AWS, no se usaron credenciales cloud y no sustituye una validación de infraestructura en una cuenta real.
 
 ## Alcance
@@ -120,9 +122,7 @@ Si `localhost:3000` devuelve conexión rechazada, iniciar el frontend manual con
 
 ## Estado Git de esta fase
 
-Este informe registra la validación realizada antes de la entrega Git final. La implementación validada se consolidó posteriormente en el commit `bade50226322a7dc2560e59068e59434b9948212` de `main` y se publicó en `origin/main`. El cierre cronológico y el estado final están en el [registro consolidado de implementación y entrega](project-delivery-record.md).
-
-Para revisar el estado actual:
+Este informe conserva la evidencia de validación local y no fija el hash del commit que contiene la documentación final. La implementación parte del commit de base `6fa93a3`; el estado publicado debe comprobarse en el registro consolidado y con los comandos siguientes:
 
 ```powershell
 git status --short --branch
