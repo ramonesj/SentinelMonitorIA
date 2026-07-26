@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
-  SentinelMonitorIA phase 19: AI archive, CloudWatch logs and least-privilege
-  task role for rules or Amazon Bedrock analysis.
+  SentinelMonitorIA phase 19: redacted S3 corpus, S3 Vectors bucket and index,
+  Bedrock Knowledge Base, CloudWatch logs and least-privilege roles.
 
 Parameters:
   ProjectName:
@@ -10,7 +10,8 @@ Parameters:
   EnvironmentName:
     Type: String
     Default: staging
-    AllowedValues: [staging, production]
+    AllowedValues: [staging]
+    Description: Temporary staging-only AI platform; use a protected production variant.
   DeploymentDay:
     Type: String
     Default: '2026-07-23'
@@ -23,17 +24,35 @@ Parameters:
     Type: String
     Default: ''
     Description: Optional globally unique S3 bucket name; leave empty for a generated name.
-  BedrockModelArn:
+  BedrockModelId:
     Type: String
-    Default: '*'
-    Description: Restrict to the selected Bedrock foundation-model ARN before production.
-  BedrockKnowledgeBaseArn:
+    Default: 'amazon.nova-lite-v1:0'
+    AllowedValues: ['amazon.nova-lite-v1:0']
+    Description: Foundation model ID used by the ECS AI worker.
+  BedrockEmbeddingModelId:
     Type: String
-    Default: '*'
-    Description: Existing Knowledge Base ARN; use * only for staging discovery.
+    Default: 'amazon.titan-embed-text-v2:0'
+    AllowedValues: ['amazon.titan-embed-text-v2:0']
+    Description: Embedding model ID used by the Knowledge Base and S3 Vectors index.
+  VectorBucketName:
+    Type: String
+    Default: ''
+    AllowedPattern: '^$|^[a-z0-9][a-z0-9-]{2,62}$'
+    Description: Optional S3 Vectors bucket name; leave empty for the environment-derived name.
+  VectorIndexName:
+    Type: String
+    Default: smi-kb-index
+    AllowedPattern: '^[a-z0-9][a-z0-9-]{2,62}$'
+    Description: S3 Vectors index name used by Bedrock.
+  VectorDimension:
+    Type: Number
+    Default: 1024
+    AllowedValues: [1024]
+    Description: Fixed Titan Embeddings V2 dimension for the S3 Vectors index.
 
 Conditions:
   HasCustomBucketName: !Not [!Equals [!Ref LogArchiveBucketName, '']]
+  HasCustomVectorBucketName: !Not [!Equals [!Ref VectorBucketName, '']]
 
 Resources:
   AiLogArchiveBucket:
@@ -76,6 +95,193 @@ Resources:
         - Key: CostCenter
           Value: !Sub ${ProjectName}-${EnvironmentName}
 
+  AiVectorBucket:
+    Type: AWS::S3Vectors::VectorBucket
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      VectorBucketName: !If
+        - HasCustomVectorBucketName
+        - !Ref VectorBucketName
+        - !Sub smi-${EnvironmentName}-vectors
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-ai-vectors
+        - Key: Component
+          Value: ai-vector-store
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  AiVectorIndex:
+    Type: AWS::S3Vectors::Index
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    DependsOn: AiVectorBucket
+    Properties:
+      VectorBucketArn: !Ref AiVectorBucket
+      IndexName: !Ref VectorIndexName
+      DataType: float32
+      Dimension: !Ref VectorDimension
+      DistanceMetric: cosine
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-ai-vector-index
+        - Key: Component
+          Value: ai-vector-index
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  BedrockKnowledgeBaseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Service role used by Bedrock to ingest the S3 corpus and query S3 Vectors.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*
+      Policies:
+        - PolicyName: ReadCorpusAndWriteVectorIndex
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource: !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${BedrockEmbeddingModelId}
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt AiLogArchiveBucket.Arn
+                Condition:
+                  StringLike:
+                    s3:prefix:
+                      - knowledge-base/
+                      - knowledge-base/*
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub ${AiLogArchiveBucket.Arn}/knowledge-base/*
+              - Effect: Allow
+                Action:
+                  - s3vectors:GetVectorBucket
+                  - s3vectors:ListIndexes
+                Resource: !Ref AiVectorBucket
+              - Effect: Allow
+                Action:
+                  - s3vectors:GetIndex
+                  - s3vectors:QueryVectors
+                  - s3vectors:GetVectors
+                  - s3vectors:ListVectors
+                  - s3vectors:PutVectors
+                  - s3vectors:DeleteVectors
+                Resource: !Ref AiVectorIndex
+      Tags:
+        - Key: Name
+          Value: !Sub sentinel-monitoria-${EnvironmentName}-bedrock-kb-role
+        - Key: Component
+          Value: bedrock-knowledge-base
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: DeploymentDay
+          Value: !Ref DeploymentDay
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CostCenter
+          Value: !Sub ${ProjectName}-${EnvironmentName}
+
+  AiVectorBucketPolicy:
+    Type: AWS::S3Vectors::VectorBucketPolicy
+    DependsOn: AiVectorIndex
+    Properties:
+      VectorBucketArn: !Ref AiVectorBucket
+      Policy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: BedrockKnowledgeBaseBucketAccess
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt BedrockKnowledgeBaseRole.Arn
+            Action:
+              - s3vectors:GetVectorBucket
+              - s3vectors:ListIndexes
+            Resource: !Ref AiVectorBucket
+          - Sid: BedrockKnowledgeBaseIndexAccess
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt BedrockKnowledgeBaseRole.Arn
+            Action:
+              - s3vectors:GetIndex
+              - s3vectors:QueryVectors
+              - s3vectors:GetVectors
+              - s3vectors:ListVectors
+              - s3vectors:PutVectors
+              - s3vectors:DeleteVectors
+            Resource: !Sub ${AiVectorBucket}/*
+
+  AiKnowledgeBase:
+    Type: AWS::Bedrock::KnowledgeBase
+    DependsOn:
+      - AiVectorBucketPolicy
+      - AiVectorIndex
+    Properties:
+      Name: !Sub sentinel-monitoria-${EnvironmentName}-ai-kb
+      Description: Redacted SentinelMonitorIA operational knowledge for read-only RAG explanations.
+      RoleArn: !GetAtt BedrockKnowledgeBaseRole.Arn
+      KnowledgeBaseConfiguration:
+        Type: VECTOR
+        VectorKnowledgeBaseConfiguration:
+          EmbeddingModelArn: !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${BedrockEmbeddingModelId}
+      StorageConfiguration:
+        Type: S3_VECTORS
+        S3VectorsConfiguration:
+          IndexArn: !Ref AiVectorIndex
+      Tags:
+        Name: !Sub sentinel-monitoria-${EnvironmentName}-ai-kb
+        Component: bedrock-knowledge-base
+        Project: !Ref ProjectName
+        Environment: !Ref EnvironmentName
+        DeploymentDay: !Ref DeploymentDay
+        ManagedBy: CloudFormation
+        CostCenter: !Sub ${ProjectName}-${EnvironmentName}
+
+  AiKnowledgeBaseDataSource:
+    Type: AWS::Bedrock::DataSource
+    DependsOn: AiKnowledgeBase
+    Properties:
+      DataDeletionPolicy: DELETE
+      KnowledgeBaseId: !Ref AiKnowledgeBase
+      Name: !Sub sentinel-monitoria-${EnvironmentName}-ai-corpus
+      Description: S3 corpus restricted to the knowledge-base/ prefix.
+      DataSourceConfiguration:
+        Type: S3
+        S3Configuration:
+          BucketArn: !GetAtt AiLogArchiveBucket.Arn
+          InclusionPrefixes:
+            - knowledge-base/
+
   AiWorkerLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
@@ -115,15 +321,11 @@ Resources:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
-                Action:
-                  - bedrock:InvokeModel
-                  - bedrock:InvokeModelWithResponseStream
-                Resource: !Ref BedrockModelArn
+                Action: bedrock:InvokeModel
+                Resource: !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}
               - Effect: Allow
-                Action:
-                  - bedrock:Retrieve
-                  - bedrock:RetrieveAndGenerate
-                Resource: !Ref BedrockKnowledgeBaseArn
+                Action: bedrock:Retrieve
+                Resource: !GetAtt AiKnowledgeBase.KnowledgeBaseArn
               - Effect: Allow
                 Action: s3:ListBucket
                 Resource: !GetAtt AiLogArchiveBucket.Arn
@@ -150,17 +352,70 @@ Resources:
 
 Outputs:
   AiLogArchiveBucketArn:
-    Description: Private S3 bucket ARN for redacted log/archive data.
+    Description: Private S3 bucket ARN for redacted log/archive data and the KB corpus.
     Value: !GetAtt AiLogArchiveBucket.Arn
     Export:
       Name: !Sub ${ProjectName}-${EnvironmentName}-AiLogArchiveBucketArn
   AiLogArchiveBucketName:
-    Description: Private S3 bucket name for AI context data.
+    Description: Private S3 bucket name; upload only redacted documents below knowledge-base/.
     Value: !Ref AiLogArchiveBucket
     Export:
       Name: !Sub ${ProjectName}-${EnvironmentName}-AiLogArchiveBucketName
+  AiVectorBucketArn:
+    Description: S3 Vectors bucket ARN used by the Bedrock Knowledge Base.
+    Value: !Ref AiVectorBucket
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-AiVectorBucketArn
+  AiVectorBucketName:
+    Description: S3 Vectors bucket name.
+    Value: !If
+      - HasCustomVectorBucketName
+      - !Ref VectorBucketName
+      - !Sub smi-${EnvironmentName}-vectors
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-AiVectorBucketName
+  AiVectorIndexArn:
+    Description: S3 Vectors index ARN used by the Bedrock Knowledge Base.
+    Value: !Ref AiVectorIndex
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-AiVectorIndexArn
+  AiVectorIndexName:
+    Description: S3 Vectors index name.
+    Value: !Ref VectorIndexName
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-AiVectorIndexName
+  AiBedrockModelId:
+    Description: Bedrock generation model ID shared with the ECS AI worker.
+    Value: !Ref BedrockModelId
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-AiBedrockModelId
+  AiBedrockEmbeddingModelId:
+    Description: Bedrock embedding model ID used by the Knowledge Base.
+    Value: !Ref BedrockEmbeddingModelId
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-AiBedrockEmbeddingModelId
+  AiKnowledgeBaseId:
+    Description: Managed Bedrock Knowledge Base ID for the AI worker.
+    Value: !Ref AiKnowledgeBase
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-AiKnowledgeBaseId
+  AiKnowledgeBaseArn:
+    Description: Managed Bedrock Knowledge Base ARN.
+    Value: !GetAtt AiKnowledgeBase.KnowledgeBaseArn
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-AiKnowledgeBaseArn
+  AiKnowledgeBaseDataSourceId:
+    Description: S3 data source ID for the Bedrock Knowledge Base.
+    Value: !GetAtt AiKnowledgeBaseDataSource.DataSourceId
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-AiKnowledgeBaseDataSourceId
+  BedrockKnowledgeBaseRoleArn:
+    Description: IAM role assumed by Bedrock for S3 ingestion and S3 Vectors access.
+    Value: !GetAtt BedrockKnowledgeBaseRole.Arn
+    Export:
+      Name: !Sub ${ProjectName}-${EnvironmentName}-BedrockKnowledgeBaseRoleArn
   AiTaskRoleArn:
-    Description: ECS task role for rules/Bedrock analysis.
+    Description: ECS task role for Nova Lite explanations and Knowledge Base retrieval.
     Value: !GetAtt AiTaskRole.Arn
     Export:
       Name: !Sub ${ProjectName}-${EnvironmentName}-AiTaskRoleArn

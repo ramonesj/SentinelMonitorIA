@@ -90,8 +90,11 @@
     "19-ai-platform": {
       "LogRetentionInDays": "30",
       "LogArchiveBucketName": "",
-      "BedrockModelArn": "*",
-      "BedrockKnowledgeBaseArn": "*"
+      "BedrockModelId": "amazon.nova-lite-v1:0",
+      "BedrockEmbeddingModelId": "amazon.titan-embed-text-v2:0",
+      "VectorBucketName": "",
+      "VectorIndexName": "smi-kb-index",
+      "VectorDimension": "1024"
     },
     "20-notification-platform": {
       "LogRetentionInDays": "30"
@@ -103,9 +106,7 @@
       "DesiredCount": "1",
       "RedisTls": "true",
       "LogLevel": "info",
-      "AiProvider": "rules",
-      "BedrockModelId": "",
-      "BedrockKnowledgeBaseId": "",
+      "AiProvider": "bedrock",
       "NotificationChannels": "log"
     },
     "22-ecs-notification-worker": {
@@ -130,8 +131,10 @@
     "Construya y publique las imágenes ARM64 antes de ejecutar las fases 11, 12, 21 y 22.",
     "Mantenga RedisTls=true en las fases ECS 11, 12, 21 y 22 porque ElastiCache usa TransitEncryptionEnabled=true; los Compose locales usan REDIS_TLS=false.",
     "Despliegue 11, 12, 21 y 22 con DesiredCount=0, ejecute scripts/run-aws-migration.ps1 y después active los servicios con DesiredCount=1.",
-    "La fase 19 permite reglas o Bedrock y acepta un Knowledge Base existente; no crea automáticamente un vector store.",
-    "Las URLs de canales y credenciales SMTP se cargan en las claves JSON del secreto de la fase 20 fuera de Git; no las añada a este archivo.",
-    "Mantenga AiProvider=rules y NotificationChannels=log hasta validar permisos, costes y destinos externos."
+    "La fase 19 crea S3 Vectors (bucket e índice), la Knowledge Base Bedrock, su Data Source S3 y los exports consumidos por la fase 21.",
+    "Suba únicamente documentos redactados al prefijo knowledge-base/ con scripts/publish-bedrock-knowledge-base.ps1; no mezcle secretos, credenciales ni telemetry sin redacción.",
+    "La fase 19 fija BedrockModelId=amazon.nova-lite-v1:0 y BedrockEmbeddingModelId=amazon.titan-embed-text-v2:0 con dimensión 1024; la fase 21 recibe el modelo mediante el export AiBedrockModelId.",
+    "AiProvider=bedrock activa Nova Lite, AI_ENABLE_ACTIONS=false queda forzado en la task definition y NotificationChannels=log evita destinos externos.",
+    "S3 Vectors evita el coste fijo de OCUs de OpenSearch Serverless, pero genera cargos de almacenamiento, ingesta y consultas; destruir el staging el viernes requiere revisar Billing y vaciar los recursos vectoriales."
   ]
 }

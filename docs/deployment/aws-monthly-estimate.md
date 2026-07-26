@@ -14,15 +14,15 @@
 | Aplicación | Un servicio ECS/Fargate para backend y uno para worker, más una tarea ARM64 para análisis IA y otra para notificaciones; todas pequeñas para staging |
 | Entrada | Un Application Load Balancer; frontend estático en S3 + CloudFront con tráfico bajo |
 | Repositorios | Dos repositorios ECR: backend y worker |
-| No incluido | OpenSearch, Bedrock Knowledge Base, inferencia Bedrock, WAF, NAT Gateway, Multi-AZ, réplicas Redis, SQS, alarmas avanzadas y tráfico significativo |
+| No incluido en el cálculo base | Inferencia Bedrock, Knowledge Base/S3 Vectors, WAF, NAT Gateway, Multi-AZ, réplicas Redis, SQS, alarmas avanzadas y tráfico significativo |
 
-La plantilla `infra/cloudformation/sentinel-monitoria-foundation.yaml` prepara la red, NAT, RDS, Redis y ECR. ECS/Fargate, ALB, S3, CloudFront, DNS y ACM pertenecen a capas posteriores. Las fases `19`–`22` incorporan archivo IA, Bedrock opcional, análisis asíncrono y notificaciones; no se despliegan con la foundation monolítica.
+La plantilla `infra/cloudformation/sentinel-monitoria-foundation.yaml` prepara la red, NAT, RDS, Redis y ECR. ECS/Fargate, ALB, S3, CloudFront, DNS y ACM pertenecen a capas posteriores. Las fases `19`–`22` declaran el archivo IA, S3 Vectors, Knowledge Base/Data Source Bedrock, análisis asíncrono y notificaciones; no se despliegan con la foundation monolítica.
 
-Los importes son rangos de planificación para `us-east-1`, no una cotización contractual. El precio final depende de la arquitectura exacta, transferencia, almacenamiento, logs, backups, promociones y cambios de precios. El objetivo siguiente cubre el cómputo de IA/notificaciones y sus servicios base, pero **no** incluye el consumo variable de inferencia Bedrock ni un vector store administrado.
+Los importes son rangos de planificación para `us-east-1`, no una cotización contractual. El precio final depende de la arquitectura exacta, transferencia, almacenamiento, logs, backups, promociones y cambios de precios. El objetivo base cubre el cómputo de IA/notificaciones y sus servicios existentes, pero **no** incluye el consumo variable de inferencia Bedrock ni S3 Vectors. Por eso el objetivo de USD 100 no garantiza la solución completa con RAG activo.
 
 ## Presupuesto mensual de staging ARM64
 
-Con 730 horas y tráfico bajo, el presupuesto recomendado para la solución completa es **USD 95–120/mes antes de Bedrock y del vector store**. Conviene reservar hasta **USD 125–150/mes** si se habilitan más logs, transferencia, tareas con mayor CPU/memoria o canales de correo. Bedrock se presupuesta por tokens y puede convertirse en la partida dominante si se analizan grandes volúmenes.
+Con 730 horas y tráfico bajo, el presupuesto de la plataforma base es **USD 95–120/mes antes de Bedrock y S3 Vectors**. La Knowledge Base usa Titan Embeddings V2 y el AI worker usa Nova Lite, ambos con consumo variable; S3 Vectors añade almacenamiento, ingesta y consultas. Para una prueba corta se puede reducir el gasto al destruir el staging después de validar, pero no se debe prometer permanecer debajo de USD 100 mientras RAG esté activo.
 
 | Componente | Rango mensual orientativo | Parte aproximada de 72 h | Observaciones |
 |---|---:|---:|---|
@@ -40,9 +40,10 @@ Con 730 horas y tráfico bajo, el presupuesto recomendado para la solución comp
 | Secrets Manager + SNS opcional | USD 1–4 | USD 0.10–0.39 | Secreto de canales, topic opcional y solicitudes; no incluye destinatarios externos. |
 | SES / SMTP / webhooks | USD 0–5+ | USD 0–0.50+ | SES depende del volumen y la región; Slack, Discord, Teams o SMTP pueden tener planes y cargos propios. |
 | EBS, snapshots, backups y transferencia | USD 3–5 | USD 0.30–0.49 | Es la partida con mayor variación operacional. |
-| Bedrock Converse / Retrieve | Variable; no incluido | Variable | Depende del modelo, tokens de entrada/salida y llamadas de Knowledge Base. |
-| OpenSearch / Bedrock Knowledge Base | Opcional; no incluido | Opcional | No se crea en las fases actuales; elegir vector store, embeddings, red y retención antes de presupuestarlo. |
-| **Presupuesto objetivo sin Bedrock ni vector store** | **USD 95–120** | **USD 9.37–11.84** | Rango de bajo tráfico para foundation + aplicación + fases 19–22; comprobar el consumo real en Billing. |
+| Bedrock Converse / Retrieve | Variable; no incluido | Variable | Nova Lite, Titan Embeddings e ingestas dependen de tokens, documentos, frecuencia y llamadas de Knowledge Base. |
+| S3 Vectors | Variable por almacenamiento, ingesta y consultas; no incluido | Variable | No tiene la colección OCU de OpenSearch Serverless, pero el bucket/índice y las operaciones vectoriales se facturan según uso; verificar la tarifa vigente. |
+| Bedrock Knowledge Base / Data Source | Variable; no incluido | Variable | La creación del recurso no sustituye el coste de embeddings, ingesta y Retrieve. |
+| **Presupuesto objetivo de la base sin Bedrock ni S3 Vectors** | **USD 95–120** | **USD 9.37–11.84** | Rango de bajo tráfico para foundation + aplicación + fases 19–22; no representa el coste total con RAG activo. |
 
 El rango por componente no debe interpretarse como una suma automática de todos los máximos: las cifras superiores representan escenarios conservadores y pueden superponerse. El coste de una variante x86 equivalente se estima en **USD 100–130/mes antes de Bedrock**, principalmente por la diferencia de precio de cómputo.
 
@@ -54,7 +55,7 @@ coste Bedrock ≈ (tokens_entrada / 1 000 000 × precio_entrada)
               + llamadas de Retrieve / Knowledge Base, si aplican
 ```
 
-El proveedor `rules` no llama a Bedrock y sirve para validar el flujo sin coste de inferencia. El proveedor `bedrock` sólo debe habilitarse después de fijar el `BedrockModelId`, limitar el ARN IAM y establecer presupuestos/alertas de coste.
+El proveedor `rules` no llama a Bedrock y sirve para validar el flujo sin coste de inferencia. El proveedor `bedrock` queda configurado para Nova Lite en la fase 21; antes de activar el servicio se deben fijar límites de tokens, revisar el coste de S3 Vectors y establecer presupuestos/alertas.
 
 ## Escenario de sólo foundation
 
@@ -65,7 +66,7 @@ Si durante la validación sólo se crea la plantilla actualizada —NAT, RDS, Re
 USD 35–55 × 0.09863 ≈ USD 3.45–5.42 antes de créditos o Free Tier
 ```
 
-Para la solución completa planificada **sin inferencia Bedrock ni vector store**:
+Para la solución completa planificada **sin inferencia Bedrock ni S3 Vectors**:
 
 ```text
 USD 95–120 × (72 / 730) ≈ USD 9.37–11.84 antes de créditos o Free Tier
@@ -108,6 +109,7 @@ La NAT instance `t4g.micro` es apropiada para staging temporal porque reduce el 
 
 La prueba no debe terminar sólo con `DeleteStack`:
 
+- Eliminar la Knowledge Base/Data Source y vaciar/eliminar el bucket e índice S3 Vectors de la fase 19; el bucket vectorial sólo puede eliminarse cuando esté vacío.
 - Vaciar y eliminar buckets S3 de prueba.
 - Eliminar servicios, tareas, ALB, target groups, CloudFront y registros DNS de las capas posteriores.
 - Confirmar que no haya tareas ECS activas ni snapshots innecesarios.
@@ -135,6 +137,7 @@ La prueba no debe terminar sólo con `DeleteStack`:
 - [VPC e IPv4 pública](https://aws.amazon.com/vpc/pricing/)
 - [AWS Bedrock pricing](https://aws.amazon.com/bedrock/pricing/)
 - [Amazon S3 pricing](https://aws.amazon.com/s3/pricing/)
+- [S3 Vectors con Bedrock Knowledge Bases](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-vectors-bedrock-kb.html)
 - [Amazon SNS pricing](https://aws.amazon.com/sns/pricing/)
 - [Amazon SES pricing](https://aws.amazon.com/ses/pricing/)
 - [AWS Fargate](https://aws.amazon.com/fargate/pricing/)

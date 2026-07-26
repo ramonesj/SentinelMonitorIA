@@ -22,8 +22,8 @@ Implementado para desarrollo local:
 
 Pendiente o condicionado:
 
-- Knowledge Base/vector store persistente para RAG; el contexto local actual usa el batch y Bedrock acepta un Knowledge Base existente.
-- SQS/EventBridge, OpenSearch gestionado y acciones automáticas productivas.
+- Ingesta y curación continua del corpus de la Knowledge Base; la infraestructura AWS de fase 19 ya crea S3, S3 Vectors y Bedrock Knowledge Base, pero el staging no se ha desplegado.
+- SQS/EventBridge y acciones automáticas productivas.
 - Integración E2E completa del agente Vector.
 
 ## Arquitectura
@@ -63,7 +63,9 @@ Proveedores:
 
 - `AI_PROVIDER=rules`: modo local predeterminado, sin llamadas externas.
 - `AI_PROVIDER=ollama`: explicaciones locales mediante `AI_OLLAMA_BASE_URL` y `AI_MODEL_NAME`.
-- `AI_PROVIDER=bedrock`: `AI_MODEL_ID` y el task role AWS; `AI_KNOWLEDGE_BASE_ID` es opcional.
+- `AI_PROVIDER=bedrock`: `AI_MODEL_ID=amazon.nova-lite-v1:0` y el task role AWS; `AI_KNOWLEDGE_BASE_ID` llega desde el export de la fase 19 en ECS.
+
+La fase 19 crea la Knowledge Base con `amazon.titan-embed-text-v2:0` y S3 Vectors como vector store. El script `scripts/publish-bedrock-knowledge-base.ps1` carga documentos redactados al prefijo `knowledge-base/` y puede iniciar `start-ingestion-job`; no debe cargar secretos ni telemetry sin anonimizar.
 
 Canales soportados: `log`, `email`, `webhook`, `slack`, `discord` y `teams`. Las URLs, SMTP y secretos se configuran fuera de Git. `AI_ENABLE_ACTIONS=false` no debe cambiarse en esta primera fase.
 

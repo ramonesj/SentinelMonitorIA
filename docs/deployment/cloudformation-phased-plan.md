@@ -33,7 +33,7 @@ La foundation existente (`sentinel-monitoria-foundation.yaml`) se conserva como 
 | 16 | `16-acm-certificates.yaml` | Certificados ACM para API y frontend | 15; región us-east-1 |
 | 17 | `17-alb-https.yaml` | Listener HTTPS y redirect HTTP→HTTPS opcional | 09, 16 |
 | 18 | `18-route53-records.yaml` | Alias DNS hacia ALB y CloudFront | 14, 15, 17 |
-| 19 | `19-ai-platform.yaml` | S3 de contexto/archivo, logs y rol IAM para Bedrock | 03, 08 |
+| 19 | `19-ai-platform.yaml` | S3 de corpus redactado, S3 Vectors (bucket/índice), Knowledge Base/Data Source Bedrock, logs y roles IAM | 03, 08 |
 | 20 | `20-notification-platform.yaml` | Secreto de canales, SNS opcional, logs y rol IAM | 03, 08 |
 | 21 | `21-ecs-ai-worker.yaml` | Worker ECS de reglas, análisis y explicaciones Bedrock | 04, 05, 06, 07, 08, 10, 19 |
 | 22 | `22-ecs-notification-worker.yaml` | Worker ECS de email/webhooks/chat y entregas idempotentes | 04, 05, 06, 07, 08, 10, 20 |
@@ -69,7 +69,7 @@ La aplicación publica el batch en la cola `ai_analysis` sólo después de que e
 
 - ejecuta reglas determinísticas de CPU, memoria, logs y eventos;
 - puede usar Ollama local o Bedrock Converse para explicar señales;
-- puede recuperar contexto de un Bedrock Knowledge Base existente mediante `BedrockKnowledgeBaseId`;
+- puede recuperar contexto de la Knowledge Base Bedrock administrada mediante `AI_KNOWLEDGE_BASE_ID` (export de la fase 19);
 - crea `AIAnalysis` y `Alert` con una clave de deduplicación por organización/batch;
 - publica una entrega por canal en `notifications` sin ejecutar acciones operativas.
 
@@ -77,7 +77,11 @@ El notification worker persiste cada intento en `NotificationDelivery`, aplica r
 
 ## Vector store y RAG
 
-El contexto local se limita al batch actual para no introducir un servicio pesado en Docker Compose. En AWS, S3 se prepara en la fase 19 y el código puede consultar un Knowledge Base de Bedrock existente. OpenSearch/pgvector, embeddings, sincronización de documentos y retención deben elegirse como una fase posterior explícita; no se crean automáticamente para evitar costes y una configuración de índice incompleta.
+El contexto local se limita al batch actual para no introducir un vector store en Docker Compose. En AWS, la fase 19 crea un bucket y un índice S3 Vectors, una Knowledge Base Bedrock con `amazon.titan-embed-text-v2:0` y un Data Source S3 restringido a `knowledge-base/`. La fase 21 consulta el ID exportado y usa `amazon.nova-lite-v1:0` para explicaciones; el script `scripts/publish-bedrock-knowledge-base.ps1` publica documentos redactados y puede iniciar la ingesta explícitamente.
+
+S3 Vectors evita la colección y las políticas de red/OCU de OpenSearch Serverless. El rol de Bedrock sólo accede al bucket/índice vectorial declarados y al prefijo de documentos; no se suben secretos ni telemetry sin redacción. El almacenamiento, las consultas y la ingesta de S3 Vectors siguen siendo variables y deben incluirse en el presupuesto.
+
+Los recursos `AiVectorBucket` y `AiVectorIndex` usan deliberadamente `DeletionPolicy: Delete` y `UpdateReplacePolicy: Delete`, y el Data Source usa `DataDeletionPolicy: DELETE`, porque este entorno es un staging temporal que se destruirá el viernes. Antes de reutilizar la plantilla en producción debe crearse una variante protegida con retención, revisión de Change Set y una política de eliminación de datos aprobada; no se deben conservar estos valores destructivos por defecto.
 
 ## Secretos
 
@@ -106,8 +110,9 @@ Antes de activar las fases 11, 12, 21 y 22:
 3. Publicar tags inmutables en ECR con `.\scripts\build-push-ecr.ps1`.
 4. Pasar el mismo tag publicado como `BackendImageTag` y `WorkerImageTag`; la imagen worker compartida sirve para telemetría, análisis IA y notificaciones.
 5. Mantener `RedisTls=true` en ECS: la fase 06 usa `TransitEncryptionEnabled=true` y los workers utilizan `rediss://` con verificación de certificado.
-6. Mantener `AiProvider=rules` y `NotificationChannels=log` durante la primera prueba para no activar Bedrock ni destinos externos.
-7. Ejecutar Alembic como una tarea ECS one-off antes de activar backend, telemetry worker, AI worker y notification worker. Las migraciones `0004` y `0005` crean las tablas requeridas por IA y alertas.
+6. Desplegar la fase 19 después de revisar el coste de S3 Vectors; cargar el corpus redactado con `scripts/publish-bedrock-knowledge-base.ps1` y revisar la ingesta.
+7. Mantener `AiProvider=bedrock`, `BedrockModelId=amazon.nova-lite-v1:0` y `NotificationChannels=log` en el staging elegido; `AI_ENABLE_ACTIONS=false` permanece forzado.
+8. Ejecutar Alembic como una tarea ECS one-off antes de activar backend, telemetry worker, AI worker y notification worker. Las migraciones `0004` y `0005` crean las tablas requeridas por IA y alertas.
 
 El backend y los tres workers comparten `backend/Dockerfile`; sólo cambia el comando del contenedor. `backend/alembic.ini` es parte del runtime y no debe quedar excluido por `.gitignore`.
 
@@ -128,8 +133,13 @@ Para revisar un Change Set sin ejecutarlo, usar la fase individual con `-NoExecu
 .\scripts\deploy-cloudformation-phases.ps1 `
   -SkipPhase 11-ecs-backend,12-ecs-worker,13-frontend-s3,14-cloudfront
 
-# Crear la plataforma opcional de IA y notificaciones.
+# Crear la plataforma IA (Knowledge Base + S3 Vectors) y notificaciones.
 .\scripts\deploy-cloudformation-phases.ps1 -Phase 19-ai-platform
+
+# Publicar sólo el corpus redactado y, cuando corresponda, iniciar la ingesta.
+.\scripts\publish-bedrock-knowledge-base.ps1 -Profile sentinel-monitoria
+.\scripts\publish-bedrock-knowledge-base.ps1 -Profile sentinel-monitoria -StartIngestion
+
 .\scripts\deploy-cloudformation-phases.ps1 -Phase 20-notification-platform
 
 # Publicar ambas imágenes ARM64 con un tag inmutable.
@@ -155,7 +165,7 @@ Para revisar un Change Set sin ejecutarlo, usar la fase individual con `-NoExecu
 .\scripts\deploy-cloudformation-phases.ps1 -Phase 14-cloudfront
 ```
 
-`-IncludeAiNotifications` amplía el recorrido normal `00-14` con `19-22`, pero no sustituye la migración ni la configuración de secretos. Para una primera puesta en marcha es más seguro usar las fases opcionales individualmente con `-StopServices`, como en la secuencia anterior. Bedrock se mantiene desactivado con `AiProvider=rules` y los destinos externos con `NotificationChannels=log` hasta confirmar costes, permisos y conectividad.
+`-IncludeAiNotifications` amplía el recorrido normal `00-14` con `19-22`, pero no sustituye la migración ni la configuración de secretos. Para la primera puesta en marcha es más seguro usar las fases opcionales individualmente con `-StopServices`, como en la secuencia anterior. La fase 19 crea la Knowledge Base y S3 Vectors; tras revisar el Change Set y el presupuesto, el worker puede iniciar con `AiProvider=bedrock` y `BedrockModelId=amazon.nova-lite-v1:0`. `NotificationChannels=log` evita destinos externos y `AI_ENABLE_ACTIONS=false` no se modifica.
 
 La fase 14 usa una CloudFront Function de viewer request para reescribir rutas SPA sin extensión a `/index.html`. No usa `CustomErrorResponses` globales, por lo que los errores `401`, `403` y `404` de la API conservan su respuesta original.
 
@@ -190,5 +200,6 @@ python -c "import json; json.load(open('infra/cloudformation/phases/parameters.e
 - Cada stack puede actualizarse o eliminarse de forma independiente respetando sus exports.
 - Eliminar primero consumidores de exports: DNS/HTTPS, CloudFront, ECS, ALB y luego datos/red.
 - RDS, Redis, secretos y ECR tienen retención de datos/repositorios definida en sus templates; borrar el stack no garantiza coste cero.
+- Vaciar el bucket S3 de corpus y eliminar el bucket/índice S3 Vectors antes de borrar la fase 19; confirmar que la Data Source use `DataDeletionPolicy: DELETE`.
 - Vaciar S3/ECR, eliminar snapshots/logs innecesarios y liberar EIP explícitamente.
 - No desplegar la foundation monolítica y las fases modulares en la misma cuenta/ambiente.

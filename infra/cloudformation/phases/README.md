@@ -38,12 +38,12 @@ Cada stack exporta valores con el patrón `${ProjectName}-${EnvironmentName}-<Ou
 
 Las fases `19`–`22` añaden la ruta asíncrona de inteligencia sin alterar la ingesta:
 
-- **19:** bucket S3 privado para archivo/contexto, logs del AI worker y rol IAM para Bedrock/Knowledge Base.
+- **19:** bucket S3 privado para archivo/contexto, bucket e índice S3 Vectors, Knowledge Base Bedrock con `amazon.titan-embed-text-v2:0`, Data Source y roles IAM.
 - **20:** secreto de canales, SNS opcional, rol IAM y logs del notification worker.
-- **21:** servicio ECS ARM64 `python -m src.workers.ai_analysis_worker`; reglas locales por defecto y Bedrock opcional.
+- **21:** servicio ECS ARM64 `python -m src.workers.ai_analysis_worker` con reglas, `amazon.nova-lite-v1:0` y recuperación RAG desde el export de la Knowledge Base.
 - **22:** servicio ECS ARM64 `python -m src.workers.notification_worker`; entregas idempotentes por log, email, webhook, Slack, Discord o Teams.
 
-La fase 19 no crea automáticamente OpenSearch ni un Bedrock Knowledge Base porque ambos requieren elegir vector store, índice, modelo de embeddings, retención y presupuesto. El worker acepta `BedrockKnowledgeBaseId` cuando ya existe uno autorizado y el adapter local usa el contexto del batch. Las acciones automáticas permanecen desactivadas (`AI_ENABLE_ACTIONS=false`).
+La fase 19 crea automáticamente S3 Vectors y la Knowledge Base administrada. El Data Source S3 sólo lee el prefijo `knowledge-base/`; publica documentos redactados mediante `scripts/publish-bedrock-knowledge-base.ps1`. Las acciones automáticas permanecen desactivadas (`AI_ENABLE_ACTIONS=false`) y las notificaciones empiezan en `log`. S3 Vectors debe revisarse como coste variable de almacenamiento, ingesta y consultas.
 
 ## Valores base
 

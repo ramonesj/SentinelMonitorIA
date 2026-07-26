@@ -60,12 +60,12 @@ Detalles de dependencias, exports/imports, puertos, health checks, imágenes y l
 - **16:** Certificados ACM DNS-validated; debe ejecutarse en `us-east-1`.
 - **17:** HTTPS ALB y redirect HTTP→HTTPS opcional.
 - **18:** Alias Route 53 para API y frontend, opcional.
-- **19:** Archivo S3 privado, logs del AI worker y rol IAM para Bedrock/Knowledge Base.
+- **19:** Archivo S3 privado, bucket e índice S3 Vectors, Knowledge Base Bedrock con Titan Embeddings V2, Data Source S3, logs y roles IAM.
 - **20:** Secreto de canales, SNS opcional, logs y rol IAM del notification worker.
-- **21:** Worker ECS ARM64 de análisis, reglas, explicación Ollama/Bedrock opcional y creación de alertas.
+- **21:** Worker ECS ARM64 de análisis con Nova Lite, recuperación desde la Knowledge Base administrada y creación de alertas.
 - **22:** Worker ECS ARM64 de notificaciones con entregas idempotentes y canales configurables.
 
-El Knowledge Base de Bedrock y su vector store no se crean automáticamente en estas fases: deben existir y pasarse como `BedrockKnowledgeBaseId` después de elegir OpenSearch/pgvector, embeddings, retención y presupuesto. La fase 19 sólo prepara el archivo S3, el rol IAM y el contrato para utilizarlo.
+La fase 19 crea el vector store y la Knowledge Base dentro del mismo stack. El Data Source sólo incluye `knowledge-base/` del bucket S3 de archivo; publique allí documentos redactados con `scripts/publish-bedrock-knowledge-base.ps1`. La fase 21 consume el ID mediante el export `AiKnowledgeBaseId`, mantiene `AI_ENABLE_ACTIONS=false` y deja `NotificationChannels=log` como valor inicial.
 
 ## Recursos por fase
 

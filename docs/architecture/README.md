@@ -59,7 +59,7 @@ La propuesta AWS se sitúa en `us-east-1` y usa:
 - RDS PostgreSQL y ElastiCache Redis en la red privada.
 - ECR para la imagen compartida por backend, telemetry, IA y notificaciones.
 - S3 privado para archivo/contexto IA y S3/CloudFront para el frontend.
-- Bedrock Runtime para explicaciones y Retrieve opcional para un Knowledge Base existente.
+- Bedrock Runtime con Nova Lite para explicaciones, Knowledge Base administrada con Titan Embeddings V2 y S3 Vectors como vector store RAG.
 - CloudWatch para logs, Secrets Manager para credenciales y SNS como canal AWS opcional.
 - Route 53, ACM, HTTPS y registros DNS como borde opcional cuando exista un dominio real.
 
@@ -92,7 +92,7 @@ La salida de los recursos privados usa la ruta privada hacia la instancia NAT y 
 |---|---|---|
 | Reglas y análisis | Python en `ai_analysis_worker` | ECS/Fargate ARM64 en fase 21 |
 | LLM | Ollama opcional | Bedrock Converse |
-| RAG | Contexto del batch; vector store local futuro | S3 + Knowledge Base Bedrock existente/opcional |
+| RAG | Contexto del batch; vector store local futuro | S3 + Knowledge Base Bedrock + S3 Vectors |
 | Persistencia | PostgreSQL + Redis Streams | RDS + ElastiCache |
 | Alertas | PostgreSQL, WebSocket y workers | RDS, ECS, SNS/SES/adaptadores |
 | Secretos | `.env` local ignorado, sin credenciales productivas | Secrets Manager + IAM task roles |
@@ -102,8 +102,8 @@ La salida de los recursos privados usa la ruta privada hacia la instancia NAT y 
 - La foundation monolítica y los 23 stacks modulares `00`–`22` son opciones alternativas, no capas para desplegar simultáneamente.
 - `QUEUE_PROVIDER=mock` conserva el flujo local básico; la extensión IA/notificaciones requiere el override Redis worker.
 - Bedrock se usa para explicación y recuperación, no sustituye las reglas ni la cola de telemetry.
-- El Knowledge Base y su vector store no se crean automáticamente: requieren decidir OpenSearch/pgvector, embeddings, índice, retención y presupuesto.
-- OpenSearch, SQS/EventBridge, WAF, Multi-AZ completo, réplicas Redis, NAT Gateway y autoscaling avanzado siguen fuera del despliegue inicial.
+- La fase 19 crea el Knowledge Base Bedrock, su Data Source S3 y el bucket/índice S3 Vectors; el índice usa Titan Embeddings V2 y el AI worker recupera contexto mediante el export de CloudFormation.
+- OpenSearch gestionado fuera de S3 Vectors, SQS/EventBridge, WAF, Multi-AZ completo, réplicas Redis, NAT Gateway y autoscaling avanzado quedan fuera del despliegue inicial.
 - Los secretos no se almacenan en templates, parámetros ni README; se inyectan mediante Secrets Manager y variables locales protegidas.
 - La existencia de un template no significa que haya sido validado por CloudFormation ni que se haya creado un recurso AWS.
 

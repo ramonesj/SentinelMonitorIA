@@ -23,7 +23,7 @@ Este índice reúne la documentación vigente del repositorio. El flujo local co
 - [Diagrama AWS editable](architecture/sentinelmonitoria-aws-architecture.drawio): archivo editable en diagrams.net/draw.io con estilos de recursos AWS.
 - [Arquitectura del agente](architecture/agent-architecture.md): Vector, fuentes, transformaciones y sink HTTP.
 
-La arquitectura AWS documentada usa `us-east-1`, una VPC `10.42.0.0/16`, subnets públicas y privadas en dos zonas, ECS/Fargate ARM64, ALB, RDS PostgreSQL privado, Redis privado, ECR, Secrets Manager, CloudWatch, S3 y CloudFront. Añade workers de análisis y notificaciones; Bedrock y el Knowledge Base/vector store son configurables y opcionales. Route 53, ACM, HTTPS y DNS se mantienen como fases opcionales hasta disponer de un dominio real.
+La arquitectura AWS documentada usa `us-east-1`, una VPC `10.42.0.0/16`, subnets públicas y privadas en dos zonas, ECS/Fargate ARM64, ALB, RDS PostgreSQL privado, Redis privado, ECR, Secrets Manager, CloudWatch, S3 y CloudFront. Añade workers de análisis y notificaciones, Bedrock Nova Lite, una Knowledge Base con Titan Embeddings V2 y S3 Vectors como vector store. Route 53, ACM, HTTPS y DNS se mantienen como fases opcionales hasta disponer de un dominio real.
 
 ## Despliegue e infraestructura
 
@@ -59,10 +59,10 @@ Reglas operativas principales:
 
 - **Validado:** desarrollo local, contratos principales, reglas de análisis, persistencia de alertas, workers Redis, 23 templates YAML, matriz JSON de parámetros, sintaxis PowerShell, paridad de parámetros, referencias cross-stack y formato Git.
 - **Resultados locales:** backend con 19 pruebas correctas y 1 omitida por requerir Redis Streams; frontend 9/9; smoke API 9/9; smoke local con frontend 8/8.
-- **Preparado:** infraestructura CloudFormation modular `00`–`22`, arquitectura AWS, integración opcional Ollama/Bedrock, Redis TLS, workers ARM64, notificaciones y coste estimado.
+- **Preparado:** infraestructura CloudFormation modular `00`–`22`, arquitectura AWS, S3/S3 Vectors/Knowledge Base Bedrock, integración Ollama/Bedrock, Redis TLS, workers ARM64, notificaciones y coste estimado.
 - **No ejecutado:** `aws cloudformation validate-template`, creación o actualización de stacks, despliegue de recursos, configuración de DNS productivo y llamadas reales a Bedrock.
 - **Historial de base:** la ampliación parte del commit publicado `6fa93a3` (`Prepare AWS deployment workflow and runtime fixes`); el estado actual debe verificarse con los comandos Git del registro de entrega.
-- **Fuera del alcance inicial:** creación automática de OpenSearch/Knowledge Base/vector store, SQS gestionado, WAF, NAT Gateway, Multi-AZ completo, réplicas Redis y autoscaling avanzado.
+- **Fuera del alcance inicial:** SQS gestionado, WAF, NAT Gateway, Multi-AZ completo, réplicas Redis y autoscaling avanzado.
 
 ## Convenciones de lectura
 

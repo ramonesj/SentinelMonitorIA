@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   SentinelMonitorIA phase 21: ARM64 ECS worker for deterministic analysis,
-  optional Ollama/Bedrock explanations and alert creation.
+  Amazon Nova Lite explanations and Bedrock Knowledge Base retrieval.
 
 Parameters:
   ProjectName:
@@ -43,21 +43,14 @@ Parameters:
     AllowedValues: [debug, info, warning, error, critical]
   AiProvider:
     Type: String
-    Default: rules
+    Default: bedrock
     AllowedValues: [rules, bedrock]
-    Description: Use rules for no-model staging or bedrock after model access is approved.
-  BedrockModelId:
-    Type: String
-    Default: ''
-    Description: Foundation model ID permitted by phase 19 IAM policy.
-  BedrockKnowledgeBaseId:
-    Type: String
-    Default: ''
-    Description: Optional existing Knowledge Base ID for retrieval-augmented context.
+    Description: Use Amazon Bedrock Nova Lite; rules remains available for a no-inference smoke test.
   NotificationChannels:
     Type: String
     Default: log
-    Description: Comma-separated channels such as log,email,slack,discord,teams,webhook.
+    AllowedValues: [log]
+    Description: Fixed to log for this staging AI worker; external notification destinations are disabled.
 
 Resources:
   AiWorkerTaskDefinition:
@@ -132,9 +125,13 @@ Resources:
             - Name: AI_PROVIDER
               Value: !Ref AiProvider
             - Name: AI_MODEL_ID
-              Value: !Ref BedrockModelId
+              Value:
+                Fn::ImportValue:
+                  Fn::Sub: '${ProjectName}-${EnvironmentName}-AiBedrockModelId'
             - Name: AI_KNOWLEDGE_BASE_ID
-              Value: !Ref BedrockKnowledgeBaseId
+              Value:
+                Fn::ImportValue:
+                  Fn::Sub: '${ProjectName}-${EnvironmentName}-AiKnowledgeBaseId'
             - Name: AI_LOG_ARCHIVE_BUCKET
               Value:
                 Fn::ImportValue:

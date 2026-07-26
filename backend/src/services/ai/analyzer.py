@@ -113,7 +113,10 @@ class IntelligenceAnalyzer:
 
         query = " ".join(f.title for f in findings)
         context = await self.context_provider.retrieve(query, payload)
-        result["context_metadata"] = {"provider": self.context_provider.name, "snippet_count": len(context)}
+        result["context_metadata"] = {
+            "provider": getattr(self.context_provider, "last_provider", self.context_provider.name),
+            "snippet_count": len(context),
+        }
 
         if self.provider.name == "rules":
             result["explanation"] = "Deterministic rules detected one or more signals; no language model was configured."

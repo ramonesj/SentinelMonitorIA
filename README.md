@@ -87,7 +87,7 @@ La ruta AWS está preparada en 23 stacks CloudFormation numerados `00`–`22` y 
 - `15`–`18`: Route 53, ACM, HTTPS y registros DNS para un dominio propio; son opcionales.
 - `19`–`22`: plataforma IA, secreto/SNS de notificaciones, AI worker y notification worker; son opcionales y se activan después de la migración.
 
-La fase 14 permite comenzar con el DNS predeterminado `*.cloudfront.net`, sin dominio propio. Las fases 19–22 están preparadas y validadas offline, pero no forman parte de un despliegue realizado. El Knowledge Base/vector store persistente debe configurarse de forma explícita porque implica decisiones de embeddings, índice, retención y coste.
+La fase 14 permite comenzar con el DNS predeterminado `*.cloudfront.net`, sin dominio propio. Las fases 19–22 están preparadas y validadas offline, pero no forman parte de un despliegue realizado. La fase 19 ya define en CloudFormation el corpus S3, S3 Vectors, Knowledge Base Bedrock, embeddings Titan V2 y Data Source; la ingesta del corpus se ejecuta después mediante el script dedicado y el coste del vector store debe aprobarse por separado.
 
 ## Cómo funciona
 
@@ -162,7 +162,7 @@ Configuración principal:
 |---|---|---|
 | `AI_PROVIDER` | `rules` o `ollama` | `rules` o `bedrock` |
 | `AI_MODEL_ID` | No requerido para reglas/Ollama | ID del modelo Bedrock aprobado |
-| `AI_KNOWLEDGE_BASE_ID` | Vacío o contexto del batch | Knowledge Base Bedrock existente opcional |
+| `AI_KNOWLEDGE_BASE_ID` | Vacío o contexto del batch | Export de la Knowledge Base Bedrock creada por la fase 19 |
 | `NOTIFICATION_CHANNELS` | `log`, SMTP o webhooks | `log`, SES/SMTP, Slack, Discord, Teams o webhook |
 | `AI_ENABLE_ACTIONS` | `false` | `false` |
 
@@ -218,7 +218,7 @@ Lex + Bedrock, Knowledge Base y acciones controladas están preparados como evol
 | Agente Vector | Validado localmente | Configuración normal Vector `0.36.0` validada por esquema; pipeline E2E aislado con fixture JSONL, API key `telemetry:write`, Redis Streams, worker y persistencia PostgreSQL. La ejecución de fuentes host/journald/Docker queda pendiente en un host Linux real. |
 | AWS base `00`–`14` | Preparado offline | VPC, NAT, IAM, ECR, RDS, Redis TLS, ECS, ALB, S3 y CloudFront predeterminado; no desplegado. |
 | AWS dominio `15`–`18` | Opcional | Route 53, ACM, HTTPS y DNS propio; requiere dominio y certificados. |
-| AWS IA/notificaciones `19`–`22` | Preparado offline | S3 de archivo, rol Bedrock, secreto/SNS, AI worker y notification worker; opt-in y no desplegado. |
+| AWS IA/notificaciones `19`–`22` | Preparado offline | S3 Vectors, Knowledge Base/Data Source Bedrock, S3, Nova Lite, AI worker y notification worker; opt-in y no desplegado. |
 | Terraform/CDK | Pendiente | Directorios reservados para infraestructura futura. |
 | Pruebas automatizadas | Implementado localmente | Backend: 19 pruebas correctas y 1 omitida por requerir Redis Streams; frontend: 9/9; smoke API: 9/9. |
 | Validación de infraestructura | Comprobada offline | 23 templates YAML, matriz JSON, scripts PowerShell, imports/exports y `git diff --check`; no validación contra una cuenta AWS. |
@@ -231,7 +231,7 @@ El diseño AWS usa una estrategia modular y excluyente respecto a `infra/cloudfo
 |---|---:|---|---|
 | Base de aplicación | `00`–`14` | Publicar la aplicación con ECS/Fargate ARM64, RDS, Redis, ALB, S3 y CloudFront predeterminado | Preparado offline; no desplegado |
 | Dominio propio | `15`–`18` | Route 53, ACM, HTTPS directo del ALB y registros DNS | Opcional; requiere dominio y certificados |
-| IA y notificaciones | `19`–`22` | Archivo S3, permisos Bedrock, AI worker y notification worker | Preparado offline; opt-in |
+| IA y notificaciones | `19`–`22` | S3 de corpus, S3 Vectors, Knowledge Base/Data Source Bedrock, Nova Lite, AI worker y notification worker | Preparado offline; opt-in y no desplegado |
 
 El script `scripts/deploy-cloudformation-phases.ps1` conserva `00–14` como recorrido predeterminado. Las fases `19–22` se ejecutan individualmente con `-Phase` o en conjunto con `-IncludeAiNotifications`; las fases `15–18` no se agregan automáticamente. El validador CloudFormation ofrece la misma selección, pero las llamadas a AWS sólo ocurren cuando se ejecuta explícitamente con credenciales.
 
@@ -242,7 +242,8 @@ La secuencia segura para habilitar IA y notificaciones es:
 3. Crear los servicios `11`, `12`, `21` y `22` con `DesiredCount=0`.
 4. Ejecutar `alembic upgrade head` mediante la tarea ECS one-off.
 5. Activar los cuatro servicios con `DesiredCount=1`.
-6. Empezar con `AiProvider=rules` y `NotificationChannels=log`; habilitar Bedrock o destinos externos sólo después de revisar permisos, secretos, conectividad y costes.
+6. Revisar el coste de S3 Vectors y publicar únicamente el corpus redactado con `scripts/publish-bedrock-knowledge-base.ps1`.
+7. Empezar con `AiProvider=bedrock`, `BedrockModelId=amazon.nova-lite-v1:0` y `NotificationChannels=log`; `AI_ENABLE_ACTIONS=false` permanece desactivado.
 
 Redis AWS usa `TransitEncryptionEnabled=true`; por eso ECS envía `REDIS_TLS=true` y el backend/workers usan `rediss://`. La imagen compartida del worker se construye para `linux/arm64`. El objetivo de coste inicial es mantener el staging dentro del presupuesto disponible de USD 100, sin contar variaciones de tráfico o servicios opcionales de Bedrock/vector store.
 

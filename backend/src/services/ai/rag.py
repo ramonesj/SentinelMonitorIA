@@ -61,16 +61,26 @@ class BedrockKnowledgeBaseContextProvider:
     def __init__(self, knowledge_base_id: str, region: str | None):
         self.knowledge_base_id = knowledge_base_id
         self.client = boto3.client("bedrock-agent-runtime", region_name=region)
+        self.last_provider = self.name
 
     async def retrieve(self, query: str, payload: dict[str, Any]) -> list[dict[str, Any]]:
         if not query.strip():
             return []
-        response = await asyncio.to_thread(
-            self.client.retrieve,
-            knowledgeBaseId=self.knowledge_base_id,
-            retrievalQuery={"text": redact_untrusted_text(query, 800)},
-            retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": 5}},
-        )
+        try:
+            response = await asyncio.to_thread(
+                self.client.retrieve,
+                knowledgeBaseId=self.knowledge_base_id,
+                retrievalQuery={"text": redact_untrusted_text(query, 800)},
+                retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": 5}},
+            )
+        except Exception as exc:
+            logger.warning(
+                "Bedrock Knowledge Base retrieval failed; using batch context",
+                error=str(exc)[:300],
+            )
+            self.last_provider = "local-batch-fallback"
+            return await BatchContextProvider().retrieve(query, payload)
+
         snippets: list[dict[str, Any]] = []
         for result in response.get("retrievalResults", []):
             content = result.get("content", {})
@@ -84,7 +94,12 @@ class BedrockKnowledgeBaseContextProvider:
                         "location": result.get("location", {}).get("type"),
                     }
                 )
-        return snippets
+        if snippets:
+            self.last_provider = self.name
+            return snippets
+
+        self.last_provider = "local-batch-fallback"
+        return await BatchContextProvider().retrieve(query, payload)
 
 
 def build_context_provider() -> BatchContextProvider | BedrockKnowledgeBaseContextProvider:

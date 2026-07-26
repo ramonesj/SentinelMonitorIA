@@ -16,10 +16,10 @@ psycopg2-binary==2.9.9
 redis==5.0.1
 
 # AWS SDK
-boto3==1.34.0
-botocore==1.34.0
+boto3==1.43.52
+botocore==1.43.52
+# Pinned recent SDK exposes Bedrock Converse, Knowledge Base retrieval and S3 Vectors APIs.
 # AWS async clients are intentionally omitted in local development.
-# The local queue provider is an in-memory mock; AWS adapters will be added in the production phase.
 
 # Runtime utilities
 loguru==0.7.2

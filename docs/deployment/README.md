@@ -80,14 +80,14 @@ El despliegue conserva `00`–`14` como recorrido predeterminado. Las fases `19`
 - Tres días de ejecución estimados: **USD 7.40–8.88**, antes de créditos, impuestos y variaciones de tráfico.
 - Foundation solamente: **USD 35–55/mes**.
 
-Estos importes son estimaciones de planificación, no facturas ni garantías de precio. Antes de crear recursos deben revisarse región, horas, almacenamiento, snapshots, tráfico, logs, NAT, CloudFront, S3, Bedrock, OpenSearch/Knowledge Base y créditos disponibles. Las fases `21` y `22` añaden dos servicios ECS y sus logs; mantener `DesiredCount=0` durante preparación y `AiProvider=rules`/`NotificationChannels=log` durante la prueba reduce el coste variable. Bedrock y el vector store añaden coste variable o fijo adicional; mantener `AiProvider=rules` reduce el coste de staging.
+Estos importes son estimaciones de planificación, no facturas ni garantías de precio. Antes de crear recursos deben revisarse región, horas, almacenamiento, snapshots, tráfico, logs, NAT, CloudFront, S3, Bedrock, Knowledge Base, S3 Vectors y créditos disponibles. Las fases `21` y `22` añaden dos servicios ECS y sus logs; mantener `DesiredCount=0` durante preparación y `AiProvider=rules`/`NotificationChannels=log` durante la prueba reduce el coste variable. Bedrock y el vector store añaden coste variable adicional; mantener `AiProvider=rules` reduce el coste de staging.
 
 ## Inteligencia y notificaciones
 
 - Local: `AI_PROVIDER=rules` no hace llamadas externas; `ollama` es opcional y usa el endpoint local configurado.
-- AWS: `AI_PROVIDER=bedrock` usa el rol IAM de la fase 19 y `AI_MODEL_ID`; el Knowledge Base es opcional mediante `BedrockKnowledgeBaseId`.
+- AWS: `AI_PROVIDER=bedrock` usa el rol IAM de la fase 19 y `AI_MODEL_ID`; la Knowledge Base se provisiona en la fase 19 y su ID llega al AI worker mediante el export `AiKnowledgeBaseId`.
 - La fase 21 ejecuta `src.workers.ai_analysis_worker` y la fase 22 ejecuta `src.workers.notification_worker`.
-- El valor seguro inicial es `NotificationChannels=log`; email, Slack, Discord, Teams y webhooks requieren destinos y secretos configurados fuera de Git.
+- El valor seguro inicial es `NotificationChannels=log`; la fase 21 lo impone para el AI worker. Email, Slack, Discord, Teams y webhooks sólo corresponden a los canales de notificación configurados explícitamente fuera de esta fase.
 - Las acciones automáticas permanecen desactivadas y no se ejecutan comandos sobre la infraestructura desde el worker.
 
 ## Seguridad y operación
@@ -97,7 +97,7 @@ Estos importes son estimaciones de planificación, no facturas ni garantías de 
 - Los templates usan IAM y security groups separados para limitar el tráfico entre capas.
 - Route 53/ACM/HTTPS permanecen opcionales hasta disponer de un dominio administrado por el equipo.
 - La NAT instance reduce el coste frente a NAT Gateway, pero requiere evaluar disponibilidad, parcheo y capacidad antes de producción.
-- La propuesta inicial no incluye WAF, OpenSearch, SQS gestionado, Multi-AZ completo, réplicas Redis ni autoscaling avanzado.
+- La propuesta inicial no incluye WAF, SQS gestionado, Multi-AZ completo, réplicas Redis ni autoscaling avanzado.
 
 Para la operación real disponible hoy, consultar el [runbook local](../operations/local-runbook.md) y el [informe de validación local](../operations/local-validation-report.md).
 
