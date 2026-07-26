@@ -119,14 +119,18 @@ async def lifespan(app: FastAPI):
     logger.info("Shutdown complete")
 
 
+# Keep interactive API documentation available in staging while retaining the production default.
+docs_enabled = settings.debug or settings.environment == Environment.STAGING
+
+
 # Create FastAPI application
 app = FastAPI(
     title=settings.app_name,
     description=settings.app_description,
     version=settings.app_version,
-    docs_url="/api/v1/docs" if settings.debug else None,
-    redoc_url="/api/v1/redoc" if settings.debug else None,
-    openapi_url="/api/v1/openapi.json" if settings.debug else None,
+    docs_url="/api/v1/docs" if docs_enabled else None,
+    redoc_url="/api/v1/redoc" if docs_enabled else None,
+    openapi_url="/api/v1/openapi.json" if docs_enabled else None,
     lifespan=lifespan
 )
 
@@ -264,7 +268,7 @@ async def root():
         "version": settings.app_version,
         "description": settings.app_description,
         "environment": settings.environment.value,
-        "documentation": "/api/v1/docs" if settings.debug else None,
+        "documentation": "/api/v1/docs" if docs_enabled else None,
         "health": "/api/v1/health",
         "metrics": "/api/v1/metrics"
     }

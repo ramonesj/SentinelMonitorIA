@@ -4,9 +4,16 @@ const SESSION_KEY = "sentinelmonitoria.session";
 
 function errorFromResponse(response, body) {
   const detail = body?.detail;
-  const message = Array.isArray(detail)
-    ? detail.map((item) => item.msg).join(". ")
-    : detail || body?.message || `Solicitud rechazada (HTTP ${response.status})`;
+  const detailMessage = Array.isArray(detail)
+    ? detail.map((item) => item.msg).filter(Boolean).join(". ")
+    : "";
+  const validationMessage = Array.isArray(body?.errors)
+    ? body.errors.map((item) => {
+      const location = Array.isArray(item?.loc) ? item.loc[item.loc.length - 1] : "";
+      return location && item?.msg ? `${location}: ${item.msg}` : item?.msg;
+    }).filter(Boolean).join(". ")
+    : "";
+  const message = detailMessage || validationMessage || detail || body?.message || `Solicitud rechazada (HTTP ${response.status})`;
   const error = new Error(message);
   error.status = response.status;
   return error;

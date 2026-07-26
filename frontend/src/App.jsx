@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import kiroLogo from "../../Imagenes/cai.png";
 import codeFacilitoLogo from "../../Imagenes/bu.png";
 import peruFlag from "../../Imagenes/peru.png";
@@ -481,7 +481,27 @@ function IntegrationPanel({ session }) {
 
   const copyToken = async () => {
     try {
-      await navigator.clipboard.writeText(generatedToken);
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(generatedToken);
+          setCopied(true);
+          return;
+        } catch {
+          // HTTP pages can expose the API but reject it outside a secure context.
+        }
+      }
+
+      const textArea = document.createElement("textarea");
+      textArea.value = generatedToken;
+      textArea.setAttribute("readonly", "");
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.select();
+      textArea.setSelectionRange(0, textArea.value.length);
+      const copied = document.execCommand("copy");
+      document.body.removeChild(textArea);
+      if (!copied) throw new Error("Clipboard fallback failed");
       setCopied(true);
     } catch {
       setError("No se pudo copiar automáticamente. Selecciona la key y cópiala manualmente.");
@@ -555,6 +575,8 @@ function MembersPanel({ session }) {
   const [invitations, setInvitations] = useState([]);
   const [invitationForm, setInvitationForm] = useState({ email: "", role: "member", expires_in_days: 7 });
   const [invitationToken, setInvitationToken] = useState("");
+  const invitationTokenRef = useRef(null);
+  const [invitationCopyNotice, setInvitationCopyNotice] = useState("");
   const [acceptToken, setAcceptToken] = useState("");
   const [invitationSubmitting, setInvitationSubmitting] = useState(false);
 
@@ -599,6 +621,7 @@ function MembersPanel({ session }) {
     if (!organization?.id || !canManageMembers) return;
     setInvitationSubmitting(true);
     setInvitationToken("");
+    setInvitationCopyNotice("");
     setError("");
     try {
       const invitation = await createOrganizationInvitation(session, organization.id, invitationForm);
@@ -644,12 +667,51 @@ function MembersPanel({ session }) {
   };
 
   const copyInvitationToken = async () => {
+    setInvitationCopyNotice("");
+    setError("");
+
     try {
-      await navigator.clipboard.writeText(invitationToken);
-      window.alert("Token de invitación copiado");
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(invitationToken);
+        setInvitationCopyNotice("Token de invitación copiado.");
+        return;
+      }
     } catch {
-      setError("No se pudo copiar el token automáticamente. Selecciónalo y cópialo manualmente.");
+      // HTTP pages can expose the API but reject it outside a secure context.
     }
+
+    const textArea = document.createElement("textarea");
+    textArea.value = invitationToken;
+    textArea.setAttribute("readonly", "");
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+    let copied = false;
+    try {
+      document.body.appendChild(textArea);
+      textArea.select();
+      textArea.setSelectionRange(0, textArea.value.length);
+      copied = document.execCommand?.("copy") === true;
+    } catch {
+      copied = false;
+    } finally {
+      if (textArea.parentNode) textArea.parentNode.removeChild(textArea);
+    }
+
+    if (copied) {
+      setInvitationCopyNotice("Token de invitación copiado.");
+      return;
+    }
+
+    const tokenInput = invitationTokenRef.current;
+    if (tokenInput) {
+      tokenInput.focus();
+      tokenInput.select();
+      tokenInput.setSelectionRange?.(0, tokenInput.value.length);
+      setInvitationCopyNotice("El token quedó seleccionado. Presiona Ctrl+C (o ⌘+C) para copiarlo.");
+      return;
+    }
+
+    setError("No se pudo copiar el token automáticamente. Selecciónalo y cópialo manualmente.");
   };
 
   const submit = async (event) => {
@@ -717,7 +779,7 @@ function MembersPanel({ session }) {
             <small>El token se muestra una sola vez. Envíalo al invitado mediante un canal seguro.</small>
           </form>}
         </div>
-        {invitationToken && <div className="invitation-token" role="status"><div><strong>Token creado — cópialo ahora</strong><span>{invitationToken}</span></div><button type="button" onClick={copyInvitationToken}>Copy token</button></div>}
+        {invitationToken && <div className="invitation-token" role="status"><div><strong>Token creado — cópialo ahora</strong><input ref={invitationTokenRef} className="invitation-token-value" value={invitationToken} readOnly aria-label="Token de invitación" onClick={(event) => event.currentTarget.select()} />{invitationCopyNotice && <small className="invitation-copy-notice">{invitationCopyNotice}</small>}</div><button type="button" onClick={copyInvitationToken}>Copy token</button></div>}
         {organization && <div className="invitation-list"><div className="invitation-list-heading"><span>Invitation history</span><small>{invitations.length} records</small></div>{invitations.length ? invitations.map((invitation) => <div className="invitation-row" key={invitation.id}><div><strong>{invitation.email}</strong><small>{invitation.role} · Expires {new Date(invitation.expires_at).toLocaleDateString("es-ES")}</small></div><span className={`invitation-status invitation-status-${invitation.status}`}>{invitation.status}</span>{canManageMembers && invitation.status === "pending" && <button type="button" onClick={() => revokeInvitation(invitation)} disabled={invitationSubmitting}>Revoke</button>}</div>) : <div className="member-list-empty">No hay invitaciones todavía.</div>}</div>}
       </div>
       {organization && canManageMembers && <form className="member-add-form" onSubmit={submit}>
@@ -818,6 +880,12 @@ function Dashboard({ session, onLogout, theme, onThemeChange }) {
   const sentMessages = view.metrics.sentinel_queue_messages_sent || 0;
   const displayName = user.full_name || user.username || "Operator";
 
+  const validateServiceLinks = async (event) => {
+    event.preventDefault();
+    await loadDashboard(true);
+    document.getElementById("services")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -827,7 +895,7 @@ function Dashboard({ session, onLogout, theme, onThemeChange }) {
           <a className="nav-link active" href="#overview"><NavIcon>OV</NavIcon><span>Overview</span></a><a className="nav-link" href="#services"><NavIcon>SV</NavIcon><span>Services</span></a><a className="nav-link" href="#telemetry"><NavIcon>TP</NavIcon><span>Telemetry</span></a><a className="nav-link nav-alert-link" href="#alerts"><NavIcon>AL</NavIcon><span>Alerts</span>{openAlertCount > 0 && <span className="nav-alert-count">{openAlertCount}</span>}</a><a className="nav-link" href="#integrations"><NavIcon>AK</NavIcon><span>Connections</span></a><a className="nav-link" href="#members"><NavIcon>TM</NavIcon><span>Team members</span></a><a className="nav-link" href={`${API_BASE_URL}/api/v1/docs`} target="_blank" rel="noreferrer"><NavIcon>API</NavIcon><span>API explorer</span><span className="external-mark">↗</span></a>
         </nav>
         <div className="sidebar-section-label sidebar-section-lower">Resources</div>
-        <nav className="main-nav"><a className="nav-link" href="http://localhost:8080" target="_blank" rel="noreferrer"><NavIcon>DB</NavIcon><span>Database</span><span className="external-mark">↗</span></a><a className="nav-link" href="http://localhost:8081" target="_blank" rel="noreferrer"><NavIcon>RD</NavIcon><span>Redis</span><span className="external-mark">↗</span></a></nav>
+        <nav className="main-nav"><a className="nav-link" href="#services" onClick={validateServiceLinks} title="Validar estado de PostgreSQL"><NavIcon>DB</NavIcon><span>Database</span><span className="external-mark">↻</span></a><a className="nav-link" href="#services" onClick={validateServiceLinks} title="Validar estado de Redis"><NavIcon>RD</NavIcon><span>Redis</span><span className="external-mark">↻</span></a></nav>
         <div className="sidebar-bottom"><div className="sidebar-status-card"><div className="sidebar-status-heading"><StatusDot status={overallStatus} /><span>System status</span></div><strong>{error ? "Connection issue" : "All systems nominal"}</strong><span>{dashboard ? `Synced at ${formatTime(dashboard.fetchedAt)}` : "Waiting for API"}</span></div><button className="sidebar-user user-menu-button" type="button" onClick={onLogout}><span className="avatar">{userInitials}</span><span><strong>{displayName}</strong><small>Sign out securely</small></span><span className="more-mark">↗</span></button></div>
       </aside>
 

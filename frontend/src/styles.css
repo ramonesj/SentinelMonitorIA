@@ -900,9 +900,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .invitation-accept-form input:focus, .invitation-create-form input:focus, .invitation-create-form select:focus { border-color: rgba(117, 217, 190, 0.65); box-shadow: 0 0 0 3px rgba(117, 217, 190, 0.08); }
 .invitation-create-form small { grid-column: 1 / -1; color: #607087; font-size: 9px; }
 .invitation-token { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 11px; border: 1px solid rgba(116, 226, 194, 0.22); border-radius: 6px; background: rgba(116, 226, 194, 0.06); }
-.invitation-token strong, .invitation-token span { display: block; }
-.invitation-token strong { color: #bcefe0; font-size: 10px; }
-.invitation-token span { margin-top: 5px; overflow: auto; color: #b6f1df; font-family: "DM Mono", monospace; font-size: 9px; white-space: nowrap; }
+.invitation-token > div:first-child { min-width: 0; flex: 1; }
+.invitation-token strong { display: block; color: #bcefe0; font-size: 10px; }
+.invitation-token-value { display: block; width: 100%; margin-top: 5px; padding: 0; overflow: auto; border: 0; outline: none; color: #b6f1df; background: transparent; font-family: "DM Mono", monospace; font-size: 9px; white-space: nowrap; }
+.invitation-token-value:focus { color: #d4fff2; }
+.invitation-copy-notice { display: block; margin-top: 7px; color: #7ed9bd; font-size: 8px; line-height: 1.4; }
 .invitation-token button { flex: 0 0 auto; padding: 7px 9px; border: 1px solid #80dfc3; border-radius: 4px; color: #09211d; background: #80dfc3; font-size: 9px; font-weight: 700; }
 .invitation-list { margin-top: 17px; }
 .invitation-list-heading { display: flex; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.1); color: #a9b8c7; font-family: "DM Mono", monospace; font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; }
@@ -924,7 +926,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 :root[data-theme="light"] .invitation-create-form small { color: #64748b; }
 :root[data-theme="light"] .invitation-token { border-color: #b8e4d8; background: #effbf7; }
 :root[data-theme="light"] .invitation-token strong { color: #146c5c; }
-:root[data-theme="light"] .invitation-token span { color: #146c5c; }
+:root[data-theme="light"] .invitation-token-value { color: #146c5c; }
 :root[data-theme="light"] .invitation-token button { border-color: #087f6b; color: #ffffff; background: #087f6b; }
 :root[data-theme="light"] .invitation-list-heading { border-color: #dbe4ee; color: #526277; }
 :root[data-theme="light"] .invitation-list-heading small, :root[data-theme="light"] .invitation-row small { color: #64748b; }
@@ -1329,7 +1331,7 @@ body,
 .invitation-section { border-color: var(--aws-line); }
 .invitation-accept-form label, .invitation-create-form label { color: #b7c5cf; }
 .invitation-token strong { color: #d0f0f4; }
-.invitation-token span { color: var(--aws-teal-soft); }
+.invitation-token-value { color: var(--aws-teal-soft); }
 .invitation-token button { border-color: var(--aws-orange); color: var(--aws-navy); background: var(--aws-orange); }
 .invitation-row { border-color: rgba(234, 237, 237, 0.1); }
 .invitation-row strong { color: #d0d9e1; }
@@ -1561,7 +1563,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 :root[data-theme="light"] .member-add-form input:focus, :root[data-theme="light"] .member-add-form select:focus, :root[data-theme="light"] .member-actions select:focus, :root[data-theme="light"] .invitation-accept-form input:focus, :root[data-theme="light"] .invitation-create-form input:focus, :root[data-theme="light"] .invitation-create-form select:focus { border-color: #c45500; box-shadow: 0 0 0 3px var(--aws-focus); }
 :root[data-theme="light"] .invitation-section { border-color: var(--aws-line); }
 :root[data-theme="light"] .invitation-token strong { color: #007e99; }
-:root[data-theme="light"] .invitation-token span { color: #007e99; }
+:root[data-theme="light"] .invitation-token-value { color: #007e99; }
 :root[data-theme="light"] .invitation-token button { border-color: #c45500; color: #ffffff; background: #c45500; }
 :root[data-theme="light"] .invitation-status { color: #a85f00; background: #fff8eb; }
 :root[data-theme="light"] .invitation-status-accepted { color: #257d16; background: #eff8ec; }

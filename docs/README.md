@@ -2,7 +2,7 @@
 
 **Última actualización:** 23 de julio de 2026, 21:59 (UTC-05:00)
 
-Este índice reúne la documentación vigente del repositorio. El flujo local con Windows + Docker es el estado validado actualmente; la arquitectura AWS y sus templates CloudFormation describen una ruta de despliegue preparada y validada offline, pero **no se han desplegado recursos AWS**.
+Este índice reúne la documentación vigente del repositorio. El flujo local con Windows + Docker y el MVP AWS staging en `us-east-1` tienen validaciones separadas. El staging es temporal, usa S3 Website HTTP y ALB HTTP/80, y no debe considerarse una infraestructura de producción.
 
 ## Inicio por objetivo
 
@@ -12,6 +12,7 @@ Este índice reúne la documentación vigente del repositorio. El flujo local co
 | Entender la arquitectura completa | [Índice de arquitectura](architecture/README.md) |
 | Consultar el diagrama editable AWS | [Diagrama Draw.io](architecture/sentinelmonitoria-aws-architecture.drawio) |
 | Revisar el despliegue por fases | [Índice de despliegue](deployment/README.md) |
+| Operar y conectar el MVP AWS staging | [MVP AWS staging](deployment/mvp-staging.md) |
 | Operar y validar el entorno local | [Runbook local](operations/local-runbook.md) · [Informe de validación](operations/local-validation-report.md) · [Registro consolidado de entrega](operations/project-delivery-record.md) |
 | Usar el backend o el agente | [Guía del backend](../backend/README.md) · [Guía del agente](../agent/README.md) |
 | Leer el manual ejecutivo | [Manual Markdown](manual/SentinelMonitorIA-Manual-Ejecutivo.md) · [Manual PDF](manual/SentinelMonitorIA-Manual-Ejecutivo.pdf) |
@@ -57,11 +58,12 @@ Reglas operativas principales:
 
 ## Estado documental y alcance
 
-- **Validado:** desarrollo local, contratos principales, reglas de análisis, persistencia de alertas, workers Redis, 23 templates YAML, matriz JSON de parámetros, sintaxis PowerShell, paridad de parámetros, referencias cross-stack y formato Git.
-- **Resultados locales:** backend con 19 pruebas correctas y 1 omitida por requerir Redis Streams; frontend 9/9; smoke API 9/9; smoke local con frontend 8/8.
-- **Preparado:** infraestructura CloudFormation modular `00`–`22`, arquitectura AWS, S3/S3 Vectors/Knowledge Base Bedrock, integración Ollama/Bedrock, Redis TLS, workers ARM64, notificaciones y coste estimado.
-- **No ejecutado:** `aws cloudformation validate-template`, creación o actualización de stacks, despliegue de recursos, configuración de DNS productivo y llamadas reales a Bedrock.
-- **Historial de base:** la ampliación parte del commit publicado `6fa93a3` (`Prepare AWS deployment workflow and runtime fixes`); el estado actual debe verificarse con los comandos Git del registro de entrega.
+- **Validado localmente:** desarrollo local, contratos principales, reglas de análisis, persistencia de alertas, workers Redis, 23 templates YAML, matriz JSON de parámetros, sintaxis PowerShell, paridad de parámetros, referencias cross-stack y formato Git.
+- **MVP AWS staging validado:** cuenta `952763303883`, región `us-east-1`, ECS backend/worker 1/1, ALB HTTP, S3 Website, Amplify Hosting, Swagger/OpenAPI, CORS S3, registro/login/me y publicación final del frontend. Ver [MVP AWS staging](deployment/mvp-staging.md).
+- **Resultados locales:** frontend 9/9; smoke API local y backend histórico registrados en [project-delivery-record.md](operations/project-delivery-record.md). La suite backend no se ejecutó en la última sesión porque `pytest` no estaba instalado en el host.
+- **Preparado pero no habilitado:** producción HTTPS, dominio, ACM, CloudFront operativo, Bedrock autorizado, Knowledge Base ingerida y workers de IA/notificaciones activos.
+- **Bloqueos del MVP:** CloudFront requiere verificación de cuenta; Bedrock devuelve `NOT_AUTHORIZED`; Amplify HTTPS no puede autenticarse contra el ALB HTTP.
+- **Historial de base:** la preparación AWS parte del commit publicado `6fa93a3`; el estado actual debe verificarse con `git status --short --branch` y el [registro de MVP staging](deployment/mvp-staging.md).
 - **Fuera del alcance inicial:** SQS gestionado, WAF, NAT Gateway, Multi-AZ completo, réplicas Redis y autoscaling avanzado.
 
 ## Convenciones de lectura

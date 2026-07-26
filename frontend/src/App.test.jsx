@@ -117,6 +117,6 @@ describe("organization access UI", () => {
         { email: "invitee@example.com", role: "member", expires_in_days: 7 }
       );
     });
-    expect(await screen.findByText("one-time-token")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("one-time-token")).toBeInTheDocument();
   });
 });

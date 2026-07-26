@@ -4,9 +4,12 @@
 
 Esta sección documenta cómo está organizada la infraestructura declarativa de SentinelMonitorIA. El repositorio conserva dos alternativas: una foundation CloudFormation monolítica y una implementación modular por fases. Ambas describen el mismo entorno lógico y **no deben desplegarse juntas**.
 
+El [MVP AWS staging](mvp-staging.md) sí está desplegado y validado en `us-east-1` para la demostración temporal. Este MVP no representa una promoción a producción: usa S3 Website HTTP y un ALB HTTP/80, mantiene los workers de IA/notificaciones detenidos y conserva bloqueos de CloudFront y Bedrock documentados.
+
 ## Documentos principales
 
 - [Plan modular por fases](cloudformation-phased-plan.md): dependencias, contratos, exports/imports y orden `00`–`22`.
+- [MVP AWS staging](mvp-staging.md): URLs de conexión, arquitectura real, usuario demo, validaciones y límites del entorno público temporal.
 - [Estimación mensual AWS](aws-monthly-estimate.md): escenario staging ARM64, coste de tres días y foundation mínima.
 - [Plan de foundation](cloudformation-plan.md): alternativa monolítica y decisiones de la infraestructura inicial.
 - [README de la foundation](../../infra/cloudformation/README.md): template, parámetros y uso previsto.
@@ -110,9 +113,9 @@ Comprobaciones offline realizadas:
 - Paridad de parámetros entre templates y ejemplos.
 - Resolución de imports cross-stack contra exports definidos.
 - `git diff --check` correcto y escaneo sin credenciales reales.
-- Scripts PowerShell de preflight, validación, despliegue, ECR, migración y frontend preparados, pero no ejecutados contra AWS.
+- Scripts PowerShell de preflight, validación, despliegue, ECR, migración y frontend revisados; el recorrido de staging AWS fue ejecutado y sus resultados están en [MVP AWS staging](mvp-staging.md).
 - `cfn-lint` no se ejecutó porque no está instalado y no se instalaron dependencias.
 
-No se ejecutaron comandos de AWS, incluyendo `aws cloudformation validate-template`, `create-stack` o `deploy`. Esta documentación no autoriza ni implica un despliegue; cualquier ejecución debe ser una decisión explícita y precedida por revisión de seguridad, costes, backups y rollback.
+El MVP staging fue ejecutado y validado con AWS CLI; esta documentación no autoriza una promoción a producción. Cualquier nuevo despliegue debe ser una decisión explícita y precedida por revisión de seguridad, costes, backups y rollback. Para la evidencia y las URLs actuales, consultar [MVP AWS staging](mvp-staging.md).
 
 [Volver al índice documental](../README.md)

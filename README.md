@@ -34,7 +34,7 @@ Plataforma para autenticar usuarios, administrar organizaciones, recibir telemet
 
 > **Fuente de verdad:** esta guía describe el estado real del repositorio. Las capacidades marcadas como futuras o preparatorias no forman parte del flujo local validado.
 >
-> **Última actualización:** 23 de julio de 2026, 21:59 (UTC-05:00). El desarrollo local y la preparación CloudFormation están validados offline; no se han ejecutado operaciones AWS.
+> **Última actualización:** 26 de julio de 2026, 03:24 (UTC-05:00). El desarrollo local está validado y el MVP AWS staging está desplegado y comprobado en `us-east-1`; producción, HTTPS y Bedrock siguen pendientes.
 
 ## Navegación documental
 
@@ -45,6 +45,7 @@ La documentación centralizada está en [`docs/README.md`](docs/README.md). Desd
 - [Vista AWS en Markdown](docs/architecture/sentinelmonitoria-aws-architecture.md)
 - [Despliegue CloudFormation por fases](docs/deployment/cloudformation-phased-plan.md)
 - [Índice de infraestructura y despliegue](docs/deployment/README.md)
+- [MVP AWS staging: URLs, acceso y validaciones](docs/deployment/mvp-staging.md)
 - [Estimación mensual AWS](docs/deployment/aws-monthly-estimate.md)
 - [Runbook local y preproducción](docs/operations/local-runbook.md)
 - [Informe de validación local](docs/operations/local-validation-report.md)
@@ -52,7 +53,7 @@ La documentación centralizada está en [`docs/README.md`](docs/README.md). Desd
 - [Foundation CloudFormation](infra/cloudformation/README.md)
 - [CloudFormation modular](infra/cloudformation/phases/README.md)
 
-La infraestructura AWS está documentada y validada offline, pero no se han desplegado recursos AWS. La foundation monolítica y los stacks modulares son alternativas excluyentes para un mismo entorno.
+La infraestructura AWS tiene un MVP staging desplegado en `us-east-1` y documentado en [`docs/deployment/mvp-staging.md`](docs/deployment/mvp-staging.md). El recorrido público validado usa S3 Website HTTP, Amplify Hosting estático y un ALB HTTP/80 hacia ECS; CloudFront, dominio/HTTPS y Bedrock permanecen bloqueados o pendientes. La foundation monolítica y los stacks modulares siguen siendo alternativas excluyentes para un mismo entorno.
 
 ## Qué es SentinelMonitorIA
 
@@ -81,13 +82,14 @@ En la práctica, permite que una persona cree una organización desde el dashboa
 
 El núcleo local sigue siendo de desarrollo, pero ya incluye una primera plataforma AIOps asíncrona: reglas para detectar señales de CPU, memoria, logs y eventos; persistencia de `AIAnalysis`, `Alert` y `NotificationDelivery`; deduplicación; reintentos; dead-letter; canales multicanal y chatbot autenticado. Ollama y Bedrock son proveedores opcionales para explicaciones y contexto RAG. Las acciones automáticas permanecen desactivadas (`AI_ENABLE_ACTIONS=false` y `CHAT_ENABLE_ACTIONS=false`).
 
-La ruta AWS está preparada en 23 stacks CloudFormation numerados `00`–`22` y se conecta mediante exports/imports en la misma cuenta y región:
+La ruta AWS está definida en 23 stacks CloudFormation numerados `00`–`22` y se conecta mediante exports/imports en la misma cuenta y región. En el MVP staging se desplegaron y validaron la red, seguridad, IAM, ECR, RDS, Redis TLS, secretos, observabilidad, ALB, ECS backend/worker y el frontend S3. Amplify importa el frontend estático como alternativa. CloudFront no pudo activarse porque la cuenta requiere verificación para crear recursos nuevos.
 
-- `00`–`14`: red, NAT, seguridad, IAM, ECR, RDS, Redis TLS, secretos, observabilidad, ALB, ECS, backend, workers, S3 y CloudFront.
-- `15`–`18`: Route 53, ACM, HTTPS y registros DNS para un dominio propio; son opcionales.
-- `19`–`22`: plataforma IA, secreto/SNS de notificaciones, AI worker y notification worker; son opcionales y se activan después de la migración.
+- `00`–`13`: red, NAT, seguridad, IAM, ECR, RDS, Redis TLS, secretos, observabilidad, ALB, ECS, backend, workers y S3; base usada por staging.
+- `14`: CloudFront; preparado, pero bloqueado por verificación de cuenta.
+- `15`–`18`: Route 53, ACM, HTTPS y registros DNS para un dominio propio; opcionales y no activos.
+- `19`–`22`: plataforma IA, secreto/SNS de notificaciones, AI worker y notification worker; recursos preparados/desplegados según la fase, pero workers detenidos mientras Bedrock no está autorizado.
 
-La fase 14 permite comenzar con el DNS predeterminado `*.cloudfront.net`, sin dominio propio. Las fases 19–22 están preparadas y validadas offline, pero no forman parte de un despliegue realizado. La fase 19 ya define en CloudFormation el corpus S3, S3 Vectors, Knowledge Base Bedrock, embeddings Titan V2 y Data Source; la ingesta del corpus se ejecuta después mediante el script dedicado y el coste del vector store debe aprobarse por separado.
+La fase 14 permitiría comenzar con el DNS predeterminado `*.cloudfront.net`, sin dominio propio, si AWS habilita CloudFront. Bedrock devolvió `NOT_AUTHORIZED` para Titan Embeddings V2 y Nova Lite; por eso no se inició la ingesta de Knowledge Base, el AI worker permanece en `DesiredCount=0`, `AI_ENABLE_ACTIONS=false` y las notificaciones usan `log`. El detalle operativo y las URLs actuales están en [`docs/deployment/mvp-staging.md`](docs/deployment/mvp-staging.md).
 
 ## Cómo funciona
 
@@ -198,7 +200,7 @@ CHAT_MAX_MESSAGE_LENGTH=2000
 CHAT_ENABLE_ACTIONS=false
 ```
 
-Lex + Bedrock, Knowledge Base y acciones controladas están preparados como evolución, pero no forman parte de un despliegue AWS realizado.
+Lex + Bedrock, Knowledge Base y acciones controladas están preparados como evolución. En el MVP AWS el chatbot operativo funciona con `provider=rules`; Bedrock y la Knowledge Base permanecen deshabilitados por falta de autorización.
 
 ## Estado del proyecto
 
@@ -216,12 +218,13 @@ Lex + Bedrock, Knowledge Base y acciones controladas están preparados como evol
 | API keys | Implementado | Creación, listado, scopes, rotación explícita, revocación y validación persistida para telemetry. |
 | Ingestión telemetry | Implementado localmente | Requiere una API key asociada a una organización. |
 | Agente Vector | Validado localmente | Configuración normal Vector `0.36.0` validada por esquema; pipeline E2E aislado con fixture JSONL, API key `telemetry:write`, Redis Streams, worker y persistencia PostgreSQL. La ejecución de fuentes host/journald/Docker queda pendiente en un host Linux real. |
-| AWS base `00`–`14` | Preparado offline | VPC, NAT, IAM, ECR, RDS, Redis TLS, ECS, ALB, S3 y CloudFront predeterminado; no desplegado. |
-| AWS dominio `15`–`18` | Opcional | Route 53, ACM, HTTPS y DNS propio; requiere dominio y certificados. |
-| AWS IA/notificaciones `19`–`22` | Preparado offline | S3 Vectors, Knowledge Base/Data Source Bedrock, S3, Nova Lite, AI worker y notification worker; opt-in y no desplegado. |
+| AWS staging base `00`–`13` | Desplegado y validado | VPC, NAT instance, IAM, ECR, RDS, Redis TLS, secretos, observabilidad, ALB, ECS backend/worker y S3 Website en la cuenta staging. |
+| AWS CloudFront `14` | Bloqueado | Preparado, pero la cuenta AWS exige verificación antes de crear recursos CloudFront. |
+| AWS dominio `15`–`18` | No activado | Route 53, ACM, HTTPS y DNS propio; requiere dominio, certificados y la habilitación correspondiente. |
+| AWS IA/notificaciones `19`–`22` | Parcial / detenido | Recursos preparados o desplegados según la fase; Bedrock devuelve `NOT_AUTHORIZED`, los workers permanecen en `DesiredCount=0` y las notificaciones usan `log`. |
 | Terraform/CDK | Pendiente | Directorios reservados para infraestructura futura. |
 | Pruebas automatizadas | Implementado localmente | Backend: 19 pruebas correctas y 1 omitida por requerir Redis Streams; frontend: 9/9; smoke API: 9/9. |
-| Validación de infraestructura | Comprobada offline | 23 templates YAML, matriz JSON, scripts PowerShell, imports/exports y `git diff --check`; no validación contra una cuenta AWS. |
+| Validación de infraestructura | Comprobada offline y complementada en staging | 23 templates YAML, matriz JSON, scripts PowerShell, imports/exports y `git diff --check`; los recursos base y endpoints públicos también se verificaron en la cuenta AWS. |
 
 ## Alcance AWS y fases de implementación
 
@@ -229,9 +232,10 @@ El diseño AWS usa una estrategia modular y excluyente respecto a `infra/cloudfo
 
 | Bloque | Fases | Objetivo | Estado |
 |---|---:|---|---|
-| Base de aplicación | `00`–`14` | Publicar la aplicación con ECS/Fargate ARM64, RDS, Redis, ALB, S3 y CloudFront predeterminado | Preparado offline; no desplegado |
-| Dominio propio | `15`–`18` | Route 53, ACM, HTTPS directo del ALB y registros DNS | Opcional; requiere dominio y certificados |
-| IA y notificaciones | `19`–`22` | S3 de corpus, S3 Vectors, Knowledge Base/Data Source Bedrock, Nova Lite, AI worker y notification worker | Preparado offline; opt-in y no desplegado |
+| Base de aplicación | `00`–`13` | Publicar la aplicación con ECS/Fargate ARM64, RDS, Redis, ALB y S3 Website | Desplegado y validado en staging |
+| CloudFront | `14` | Añadir distribución CloudFront con el DNS predeterminado | Bloqueado por la verificación de cuenta AWS |
+| Dominio propio | `15`–`18` | Route 53, ACM, HTTPS directo del ALB y registros DNS | No activado; requiere dominio y certificados |
+| IA y notificaciones | `19`–`22` | S3 de corpus, S3 Vectors, Knowledge Base/Data Source Bedrock, Nova Lite, AI worker y notification worker | Parcial; Bedrock `NOT_AUTHORIZED`, workers detenidos y notificaciones en `log` |
 
 El script `scripts/deploy-cloudformation-phases.ps1` conserva `00–14` como recorrido predeterminado. Las fases `19–22` se ejecutan individualmente con `-Phase` o en conjunto con `-IncludeAiNotifications`; las fases `15–18` no se agregan automáticamente. El validador CloudFormation ofrece la misma selección, pero las llamadas a AWS sólo ocurren cuando se ejecuta explícitamente con credenciales.
 
@@ -247,7 +251,7 @@ La secuencia segura para habilitar IA y notificaciones es:
 
 Redis AWS usa `TransitEncryptionEnabled=true`; por eso ECS envía `REDIS_TLS=true` y el backend/workers usan `rediss://`. La imagen compartida del worker se construye para `linux/arm64`. El objetivo de coste inicial es mantener el staging dentro del presupuesto disponible de USD 100, sin contar variaciones de tráfico o servicios opcionales de Bedrock/vector store.
 
-No se han ejecutado `aws cloudformation validate-template`, Change Sets, despliegues, Bedrock, S3, Route 53, ACM ni llamadas AWS reales. La documentación, los 23 YAML, los parámetros JSON y los scripts se han comprobado offline.
+El MVP AWS staging sí se desplegó y comprobó mediante llamadas AWS reales en la cuenta `952763303883`, región `us-east-1`, con el perfil `sentinel-monitoria`. Se verificaron el frontend S3, Amplify, ALB/ECS, la salud de PostgreSQL y Redis mediante la API, API Explorer/OpenAPI, payloads seguros de registro y el chatbot `provider=rules`. CloudFront, Route 53, ACM, HTTPS y Bedrock no se activaron por los bloqueos descritos arriba. La documentación, los 23 YAML, los parámetros JSON y los scripts también se comprobaron offline.
 
 ## Arquitectura local
 
@@ -1185,6 +1189,6 @@ Este proyecto ha sido realizado por los siguientes integrantes:
   </tr>
 </table>
 
-**Última actualización:** 23 de julio de 2026, 21:59 (UTC-05:00)<br>
+**Última actualización:** 26 de julio de 2026, 03:24 (UTC-05:00)<br>
 **Copyright © 2026 SentinelMonitorIA.** Todos los derechos reservados.<br>
 Distribuido bajo la [Licencia Apache 2.0](LICENSE).
