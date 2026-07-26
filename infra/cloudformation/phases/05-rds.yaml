@@ -105,7 +105,7 @@ Resources:
     Properties:
       DBInstanceIdentifier: !Sub sentinel-monitoria-${EnvironmentName}-postgres
       Engine: postgres
-      EngineVersion: '15.4'
+      EngineVersion: '15.18'
       DBInstanceClass: !Ref DBInstanceClass
       AllocatedStorage: !Ref DBAllocatedStorage
       MaxAllocatedStorage: 100

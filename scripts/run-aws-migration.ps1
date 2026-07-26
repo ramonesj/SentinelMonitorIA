@@ -67,7 +67,7 @@ $overrides = @{
             command = @("alembic", "upgrade", "head")
         }
     )
-} | ConvertTo-Json -Compress
+} | ConvertTo-Json -Compress -Depth 5
 
 Write-Host "Running Alembic migration task" -ForegroundColor Cyan
 Write-Host "Cluster:        $Cluster"
@@ -75,19 +75,31 @@ Write-Host "Task definition: $TaskDefinition"
 Write-Host "Subnets:        $Subnet1, $Subnet2"
 Write-Host "Security group: $SecurityGroup"
 
-$runArguments = @(
-    "ecs", "run-task",
-    "--region", $Region,
-    "--cluster", $Cluster,
-    "--task-definition", $TaskDefinition,
-    "--launch-type", "FARGATE",
-    "--platform-version", "LATEST",
-    "--network-configuration", $networkConfiguration,
-    "--overrides", $overrides,
-    "--query", "tasks[0].taskArn",
-    "--output", "text"
-)
-$taskArn = (& aws @awsPrefix @runArguments).Trim()
+$overridesPath = [System.IO.Path]::GetTempFileName()
+try {
+    [System.IO.File]::WriteAllText(
+        $overridesPath,
+        $overrides,
+        [System.Text.UTF8Encoding]::new($false)
+    )
+
+    $runArguments = @(
+        "ecs", "run-task",
+        "--region", $Region,
+        "--cluster", $Cluster,
+        "--task-definition", $TaskDefinition,
+        "--launch-type", "FARGATE",
+        "--platform-version", "LATEST",
+        "--network-configuration", $networkConfiguration,
+        "--overrides", "file://$overridesPath",
+        "--query", "tasks[0].taskArn",
+        "--output", "text"
+    )
+    $taskArn = (& aws @awsPrefix @runArguments).Trim()
+} finally {
+    Remove-Item -LiteralPath $overridesPath -Force -ErrorAction SilentlyContinue
+}
+
 if ($LASTEXITCODE -ne 0 -or -not $taskArn -or $taskArn -eq "None") {
     throw "Unable to start the ECS migration task."
 }

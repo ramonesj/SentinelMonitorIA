@@ -164,7 +164,7 @@ Resources:
               trap 'status=$?; echo "NAT bootstrap failed with exit $status" >&2; exit $status' ERR
 
               attempt=1
-              while ! dnf install -y iptables-services iproute curl; do
+              while ! dnf install -y iptables-services iproute; do
                 if [ $attempt -ge 5 ]; then exit 1; fi
                 sleep $((attempt * 15))
                 attempt=$((attempt + 1))

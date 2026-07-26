@@ -80,7 +80,6 @@ Resources:
             - Origin
             - Access-Control-Request-Headers
             - Access-Control-Request-Method
-            - Upgrade
             - Sec-WebSocket-Key
             - Sec-WebSocket-Version
             - Sec-WebSocket-Protocol

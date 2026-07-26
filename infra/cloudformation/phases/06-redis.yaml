@@ -88,7 +88,6 @@ Resources:
       CacheNodeType: !Ref RedisNodeType
       NumCacheClusters: 1
       AutomaticFailoverEnabled: false
-      MultiAzEnabled: false
       AtRestEncryptionEnabled: true
       TransitEncryptionEnabled: true
       AuthToken: !Sub '{{resolve:secretsmanager:${RedisSecret}:SecretString:auth_token}}'
