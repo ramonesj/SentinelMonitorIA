@@ -26,7 +26,7 @@ La foundation existente (`sentinel-monitoria-foundation.yaml`) se conserva como 
 | 11 | `11-ecs-backend.yaml` | Task definition y ECS service backend | 00, 02, 03, 04, 05, 06, 07, 08, 09, 10 |
 | 12 | `12-ecs-worker.yaml` | Task definition y ECS service worker | 00, 02, 03, 04, 05, 06, 07, 08, 10 |
 | 13 | `13-frontend-s3.yaml` | Bucket privado para `frontend/dist` | Ninguna |
-| 14 | `14-cloudfront.yaml` | OAC y distribución CloudFront para el bucket | 13; ACM opcional |
+| 14 | `14-cloudfront.yaml` | OAC, frontend S3, origen ALB para API/health/WebSocket y dominio CloudFront predeterminado o custom | 09, 13; ACM opcional |
 | 15 | `15-route53-hosted-zone.yaml` | Hosted Zone pública | Dominio propio |
 | 16 | `16-acm-certificates.yaml` | Certificados ACM para API y frontend | 15; región us-east-1 |
 | 17 | `17-alb-https.yaml` | Listener HTTPS y redirect HTTP→HTTPS opcional | 09, 16 |
@@ -36,7 +36,7 @@ La foundation existente (`sentinel-monitoria-foundation.yaml`) se conserva como 
 | 21 | `21-ecs-ai-worker.yaml` | Worker ECS de reglas, análisis y explicaciones Bedrock | 04, 05, 06, 07, 08, 10, 19 |
 | 22 | `22-ecs-notification-worker.yaml` | Worker ECS de email/webhooks/chat y entregas idempotentes | 04, 05, 06, 07, 08, 10, 20 |
 
-Las fases 15–18 son opcionales hasta disponer de un dominio controlado por el equipo. Las fases 14 y 18 aceptan modo sin dominio para pruebas, usando el dominio DNS generado por CloudFront y el DNS del ALB.
+La fase 14 puede desplegarse sin dominio propio ni hosted zone: usa el DNS predeterminado de CloudFront, sirve el frontend desde S3 y enruta `/api/*`, `/health`, `/metrics` y WebSocket hacia el ALB. Las fases 15–18 sólo son necesarias para un hostname propio, certificados ACM o registros DNS administrados en Route 53.
 
 ## Contrato de red
 
@@ -55,7 +55,9 @@ La fase 01 coloca una NAT instance `t4g.micro` ARM64 en la primera subnet públi
 - Backend: imagen ECR indicada por `BackendImageTag`, puerto 8000, health check `/health`, target type `ip`.
 - Worker: misma imagen ECR, comando `python -m src.workers.telemetry_worker`, sin listener público.
 - Frontend: `npm run build` produce `frontend/dist`; el Dockerfile actual es de desarrollo Vite en puerto 3000 y no se usa para la distribución S3/CloudFront.
-- Backend ECS usa subnets privadas y `AssignPublicIp: DISABLED`.
+- CloudFront: el dominio predeterminado es el punto público recomendado sin dominio propio; el behavior raíz usa S3 y una CloudFront Function reescribe rutas SPA sin extensión hacia `/index.html`; los behaviors `/api/*`, `/health*` y `/metrics*` usan el ALB sin cache. El behavior `/api/*` conserva `Authorization`, CORS y headers de WebSocket, y los errores de API no se convierten en `index.html`.
+- Para publicar el frontend contra el mismo enlace, obtener primero el output `CloudFrontDomainName`, construir con `VITE_API_BASE_URL=https://<CloudFrontDomainName>` y cargar `frontend/dist` en el bucket S3. Configurar `CorsOrigins` del backend con ese mismo origen.
+- Backend ECS usa subnets privadas y `AssignPublicIp: DISABLED`; recibe `REDIS_TLS=true` en AWS y conecta con `rediss://` a ElastiCache.
 - ALB es público y sólo el security group del ALB entra al backend en TCP 8000.
 - RDS y Redis sólo aceptan tráfico del security group del backend.
 
@@ -93,30 +95,81 @@ Todos los stacks etiquetables reciben:
 
 Los archivos no tienen credenciales AWS. Los únicos valores sensibles se generan dentro de Secrets Manager durante un despliegue real.
 
-## Preparación de imágenes
+## Preparación de imágenes y runtime
 
-Antes de las fases 11 y 12:
+Antes de activar las fases 11 y 12:
 
 1. Crear ECR con la fase 04.
-2. Construir imágenes para `linux/arm64`, porque los task definitions usan ARM64.
-3. Publicar tags inmutables en ECR.
-4. Pasar el tag publicado como `BackendImageTag` y `WorkerImageTag`.
-5. Ejecutar migraciones Alembic de forma controlada antes de marcar el backend como listo.
+2. Construir las imágenes para `linux/arm64`, porque las task definitions usan ARM64.
+3. Publicar tags inmutables en ECR con `.\scripts\build-push-ecr.ps1`.
+4. Pasar el mismo tag publicado como `BackendImageTag` y `WorkerImageTag`.
+5. Mantener `RedisTls=true` en ECS: la fase 06 usa `TransitEncryptionEnabled=true` y el backend utiliza `rediss://` con verificación de certificado.
+6. Ejecutar Alembic como una tarea ECS one-off antes de activar el backend y el worker.
 
-El backend y el worker comparten `backend/Dockerfile`; sólo cambia el comando del contenedor worker.
+El backend y el worker comparten `backend/Dockerfile`; sólo cambia el comando del contenedor worker. `backend/alembic.ini` es parte del runtime y no debe quedar excluido por `.gitignore`.
+
+## Flujo recomendado sin dominio propio
+
+La cuenta de despliegue debe validarse primero. El preflight espera la cuenta `952763303883` y el usuario `arn:aws:iam::952763303883:user/ramonesj`, pero nunca guarda ni imprime credenciales:
+
+```powershell
+.\scripts\aws-preflight.ps1
+.\scripts\validate-cloudformation.ps1
+```
+
+Para revisar un Change Set sin ejecutarlo, usar la fase individual con `-NoExecuteChangeSet`. La secuencia base recomendada es:
+
+```powershell
+# Red, seguridad, IAM, ECR, datos, secretos, logs, ALB y cluster.
+.\scripts\deploy-cloudformation-phases.ps1 `
+  -SkipPhase 11-ecs-backend,12-ecs-worker,13-frontend-s3,14-cloudfront
+
+# Publicar ambas imágenes ARM64 con un tag inmutable.
+.\scripts\build-push-ecr.ps1 -ImageTag v0.1.0
+
+# Crear task definitions y servicios detenidos para poder migrar RDS.
+.\scripts\deploy-cloudformation-phases.ps1 -Phase 11-ecs-backend -StopServices
+.\scripts\deploy-cloudformation-phases.ps1 -Phase 12-ecs-worker -StopServices
+
+# Ejecutar la migración contra RDS usando la red privada y los secretos ECS.
+.\scripts\run-aws-migration.ps1
+
+# Activar los servicios después de confirmar Alembic.
+.\scripts\deploy-cloudformation-phases.ps1 -Phase 11-ecs-backend
+.\scripts\deploy-cloudformation-phases.ps1 -Phase 12-ecs-worker
+
+# Crear el bucket y la distribución CloudFront.
+.\scripts\deploy-cloudformation-phases.ps1 -Phase 13-frontend-s3
+.\scripts\deploy-cloudformation-phases.ps1 -Phase 14-cloudfront
+```
+
+La fase 14 usa una CloudFront Function de viewer request para reescribir rutas SPA sin extensión a `/index.html`. No usa `CustomErrorResponses` globales, por lo que los errores `401`, `403` y `404` de la API conservan su respuesta original.
+
+Después de obtener el output `CloudFrontDomainName`, actualizar CORS y publicar el frontend:
+
+```powershell
+$cloudFrontDomain = 'CLOUDFRONT_DOMAIN'
+.\scripts\deploy-cloudformation-phases.ps1 `
+  -Phase 11-ecs-backend `
+  -AdditionalParameterOverride "CorsOrigins=https://$cloudFrontDomain"
+.\scripts\publish-frontend.ps1 -CloudFrontDomainName $cloudFrontDomain
+```
+
+`publish-frontend.ps1` compila con `VITE_API_BASE_URL=https://<CloudFrontDomainName>`, sincroniza `frontend/dist` al bucket S3 exportado y crea una invalidación `/*` en CloudFront. El endpoint público final es `https://<CloudFrontDomainName>`.
+
+En el modo sin dominio, CloudFront termina HTTPS para el navegador y el origen ALB usa `http-only` por defecto. Para producción con cifrado también entre CloudFront y ALB, activar la fase 17 con un certificado ACM para un dominio propio y cambiar `ApiOriginProtocolPolicy` a `https-only`.
 
 ## Validación y ejecución futura
 
-La preparación actual es offline. Para ejecutar después:
+La preparación local puede comprobarse con:
 
 ```powershell
-$region = 'us-east-1'
-$base = 'infra/cloudformation/phases'
-
-aws cloudformation validate-template --region $region --template-body file://$base/00-vpc-network.yaml
+python -c "import yaml; from pathlib import Path; paths=sorted(Path('infra/cloudformation/phases').glob('*.yaml')); [list(yaml.parse(p.read_text(encoding='utf-8'))) for p in paths]; print(f'YAML OK: {len(paths)} templates')"
+python -c "import json; json.load(open('infra/cloudformation/phases/parameters.example.json', encoding='utf-8')); print('Parameters JSON OK')"
+.\scripts\validate-cloudformation.ps1
 ```
 
-Validar cada archivo antes de crear Change Sets. No ejecutar las fases 11–12 hasta confirmar imágenes, secretos, RDS, Redis, target group y logs.
+`validate-cloudformation.ps1`, `aws-preflight.ps1` y los scripts de publicación realizan llamadas AWS sólo cuando se ejecutan explícitamente con credenciales configuradas. No ejecutar las fases 11–12 hasta confirmar imágenes, secretos, RDS, Redis, target group, logs y migración completada.
 
 ## Rollback y limpieza
 

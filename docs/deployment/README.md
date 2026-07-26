@@ -4,12 +4,13 @@ Esta sección documenta cómo está organizada la infraestructura declarativa de
 
 ## Documentos principales
 
-- [Plan modular por fases](cloudformation-phased-plan.md): dependencias, contratos, exports/imports y orden `00`–`18`.
+- [Plan modular por fases](cloudformation-phased-plan.md): dependencias, contratos, exports/imports y orden `00`–`22`.
 - [Estimación mensual AWS](aws-monthly-estimate.md): escenario staging ARM64, coste de tres días y foundation mínima.
 - [Plan de foundation](cloudformation-plan.md): alternativa monolítica y decisiones de la infraestructura inicial.
 - [README de la foundation](../../infra/cloudformation/README.md): template, parámetros y uso previsto.
 - [README de templates modulares](../../infra/cloudformation/phases/README.md): catálogo de fases y validaciones offline.
 - [Matriz de parámetros](../../infra/cloudformation/phases/parameters.example.json): valores de ejemplo sin credenciales reales.
+- [Scripts de despliegue](../../scripts/): preflight, validación CloudFormation, stacks, ECR ARM64, migración ECS y publicación frontend.
 - [Arquitectura AWS](../architecture/sentinelmonitoria-aws-architecture.md): vista de componentes y relaciones.
 - [Diagrama editable](../architecture/sentinelmonitoria-aws-architecture.drawio): representación visual de la arquitectura.
 
@@ -60,11 +61,13 @@ El catálogo completo, los parámetros y los exports/imports se mantienen en [`i
 ## Orden y contratos
 
 1. Crear la red y la salida privada (`00`–`01`).
-2. Aplicar seguridad, IAM y registros (`02`–`04`).
+2. Aplicar seguridad, IAM y ECR (`02`–`04`).
 3. Crear datos, secretos y observabilidad (`05`–`08`).
-4. Crear entrada y servicios ECS (`09`–`12`).
-5. Publicar el frontend (`13`–`14`).
-6. Añadir dominio y HTTPS sólo después de confirmar dominio, región y certificados (`15`–`18`).
+4. Crear entrada y cluster ECS (`09`–`10`).
+5. Publicar imágenes ARM64 en ECR.
+6. Crear las task definitions 11/12 con `DesiredCount=0`, ejecutar la migración Alembic como tarea ECS one-off y después activar backend/worker.
+7. Crear S3 y CloudFront (`13`–`14`), actualizar CORS con el hostname CloudFront y publicar `frontend/dist`.
+8. Añadir dominio y HTTPS sólo después de confirmar dominio, región y certificados (`15`–`18`).
 
 Cada stack exporta valores con el prefijo del proyecto y del entorno, y los consumidores los importan mediante contratos explícitos. La matriz de parámetros debe revisarse como un conjunto; no se deben mezclar valores de foundation con los de fases modulares.
 
@@ -99,11 +102,12 @@ Para la operación real disponible hoy, consultar el [runbook local](../operatio
 
 Comprobaciones offline realizadas:
 
-- Parseo local correcto de los 19 templates YAML.
+- Parseo local correcto de los 23 templates YAML.
 - Matriz JSON de parámetros válida.
 - Paridad de parámetros entre templates y ejemplos.
 - Resolución de imports cross-stack contra exports definidos.
 - `git diff --check` correcto y escaneo sin credenciales reales.
+- Scripts PowerShell de preflight, validación, despliegue, ECR, migración y frontend preparados, pero no ejecutados contra AWS.
 - `cfn-lint` no se ejecutó porque no está instalado y no se instalaron dependencias.
 
 No se ejecutaron comandos de AWS, incluyendo `aws cloudformation validate-template`, `create-stack` o `deploy`. Esta documentación no autoriza ni implica un despliegue; cualquier ejecución debe ser una decisión explícita y precedida por revisión de seguridad, costes, backups y rollback.

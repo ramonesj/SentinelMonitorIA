@@ -1,7 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   SentinelMonitorIA phase 14: CloudFront distribution with Origin Access
-  Control for the private frontend bucket.
+  Control for the private frontend and an ALB origin for API, health and
+  WebSocket traffic. The default CloudFront hostname works without a custom
+  domain or Route 53 hosted zone.
 
 Parameters:
   ProjectName:
@@ -26,6 +28,13 @@ Parameters:
     Type: String
     Default: ''
     Description: ACM certificate ARN in us-east-1; required when UseCustomDomain is true.
+  ApiOriginProtocolPolicy:
+    Type: String
+    Default: http-only
+    AllowedValues: [http-only, https-only, match-viewer]
+    Description: >-
+      CloudFront-to-ALB protocol. Use http-only for the no-domain demo;
+      use https-only after enabling the ALB HTTPS listener with a valid certificate.
   PriceClass:
     Type: String
     Default: PriceClass_100
@@ -35,6 +44,50 @@ Conditions:
   HasCustomDomain: !Equals [!Ref UseCustomDomain, 'true']
 
 Resources:
+  ApiCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub sentinel-monitoria-${EnvironmentName}-api-no-cache
+        Comment: Do not cache authenticated API, health or WebSocket responses.
+        DefaultTTL: 0
+        MinTTL: 0
+        MaxTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingBrotli: false
+          EnableAcceptEncodingGzip: false
+          CookiesConfig:
+            CookieBehavior: none
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  ApiOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub sentinel-monitoria-${EnvironmentName}-api-origin
+        Comment: Forward authentication, CORS and WebSocket request headers to the ALB.
+        CookiesConfig:
+          CookieBehavior: none
+        HeadersConfig:
+          HeaderBehavior: whitelist
+          Headers:
+            - Accept
+            - Authorization
+            - Content-Type
+            - Origin
+            - Access-Control-Request-Headers
+            - Access-Control-Request-Method
+            - Upgrade
+            - Sec-WebSocket-Key
+            - Sec-WebSocket-Version
+            - Sec-WebSocket-Protocol
+            - Sec-WebSocket-Extensions
+        QueryStringsConfig:
+          QueryStringBehavior: all
+
   FrontendOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
     Properties:
@@ -44,6 +97,31 @@ Resources:
         OriginAccessControlOriginType: s3
         SigningBehavior: always
         SigningProtocol: sigv4
+
+  SpaRewriteFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub sentinel-monitoria-${EnvironmentName}-spa-rewrite
+      AutoPublish: true
+      FunctionConfig:
+        Comment: Rewrite frontend SPA routes without intercepting API paths.
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+          var lastSegment = uri.substring(uri.lastIndexOf('/') + 1);
+          var hasFileExtension = lastSegment.indexOf('.') !== -1;
+          var isApiPath = uri.indexOf('/api/') === 0 || uri === '/api';
+          var isHealthPath = uri.indexOf('/health') === 0;
+          var isMetricsPath = uri.indexOf('/metrics') === 0;
+
+          if (!hasFileExtension && !isApiPath && !isHealthPath && !isMetricsPath) {
+            request.uri = '/index.html';
+          }
+
+          return request;
+        }
 
   FrontendDistribution:
     Type: AWS::CloudFront::Distribution
@@ -66,6 +144,16 @@ Resources:
                 Fn::Sub: '${ProjectName}-${EnvironmentName}-FrontendBucketRegionalDomainName'
             OriginAccessControlId: !Ref FrontendOriginAccessControl
             S3OriginConfig: {}
+          - Id: ApiAlbOrigin
+            DomainName:
+              Fn::ImportValue:
+                Fn::Sub: '${ProjectName}-${EnvironmentName}-LoadBalancerDnsName'
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: !Ref ApiOriginProtocolPolicy
+              OriginSSLProtocols:
+                - TLSv1.2
         DefaultCacheBehavior:
           TargetOriginId: FrontendS3Origin
           ViewerProtocolPolicy: redirect-to-https
@@ -73,15 +161,34 @@ Resources:
           CachedMethods: [GET, HEAD, OPTIONS]
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
           Compress: true
-        CustomErrorResponses:
-          - ErrorCode: 403
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-            ErrorCachingMinTTL: 0
-          - ErrorCode: 404
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-            ErrorCachingMinTTL: 0
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt SpaRewriteFunction.FunctionARN
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: ApiAlbOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD, OPTIONS]
+            CachePolicyId: !Ref ApiCachePolicy
+            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            Compress: false
+          - PathPattern: /health*
+            TargetOriginId: ApiAlbOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS]
+            CachedMethods: [GET, HEAD, OPTIONS]
+            CachePolicyId: !Ref ApiCachePolicy
+            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            Compress: false
+          - PathPattern: /metrics*
+            TargetOriginId: ApiAlbOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS]
+            CachedMethods: [GET, HEAD, OPTIONS]
+            CachePolicyId: !Ref ApiCachePolicy
+            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            Compress: false
         ViewerCertificate:
           Fn::If:
             - HasCustomDomain

@@ -186,7 +186,6 @@ agent/deploy/custom-config.toml
 agent/configs/local/
 agent/bin/local/
 backend/.env
-backend/alembic.ini
 backend/migrations/
 workers/.env
 frontend/.env

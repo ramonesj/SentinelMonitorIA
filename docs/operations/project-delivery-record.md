@@ -228,6 +228,23 @@ Durante las pruebas se observaron warnings de deprecación de Pydantic/`datetime
 - No se utilizó `down -v`, no se borraron volúmenes y no se ejecutó un reset destructivo.
 - La corrección de logs evita el JWT en la URL del WebSocket, pero cualquier despliegue no-local todavía requiere HTTPS, proxy seguro, secretos externos y revisión de retención de logs.
 
+## Publicación AWS sin dominio propio
+
+La fase CloudFront fue ampliada para que el dominio predeterminado `*.cloudfront.net` sea el punto público recomendado: S3 sirve el frontend y los behaviors `/api/*`, `/health*`, `/metrics*` y `/api/v1/alerts/ws` enrutan hacia el ALB sin cache. La fase 14 usa una CloudFront Function para el fallback SPA y no aplica respuestas `200` de `index.html` a errores de la API. No requiere Route 53 ni dominio propio; el parámetro `ApiOriginProtocolPolicy=http-only` se usa para el modo de demo sin ACM.
+
+El runtime AWS usa Redis con `TransitEncryptionEnabled=true`, `REDIS_TLS=true` y `rediss://`. Los entornos locales conservan `REDIS_TLS=false`. RDS se inicializa mediante `scripts/run-aws-migration.ps1`, que ejecuta `alembic upgrade head` en una tarea ECS one-off antes de activar los servicios.
+
+Se añadieron herramientas operativas sin credenciales en `scripts/`:
+
+- `aws-preflight.ps1`: verifica cuenta `952763303883`, usuario esperado, región y zonas disponibles cuando se ejecuta explícitamente.
+- `validate-cloudformation.ps1`: valida las plantillas mediante CloudFormation.
+- `deploy-cloudformation-phases.ps1`: ejecuta stacks `00`–`14`, con nombres `sentinel-monitoria-*`, parámetros y Change Sets no ejecutados.
+- `build-push-ecr.ps1`: construye y publica imágenes `linux/arm64`.
+- `run-aws-migration.ps1`: ejecuta Alembic en ECS.
+- `publish-frontend.ps1`: compila con el hostname CloudFront, sincroniza S3 e invalida la distribución.
+
+Para producción con cifrado también entre CloudFront y ALB se requiere un dominio controlado, ACM para el listener HTTPS del ALB y `ApiOriginProtocolPolicy=https-only`. Estas correcciones están preparadas localmente y todavía no se han desplegado en AWS.
+
 ## AWS y funcionalidades futuras
 
 No se desplegaron recursos AWS. Quedan preparados o documentados, pero requieren una fase separada:
@@ -242,19 +259,18 @@ No se desplegaron recursos AWS. Quedan preparados o documentados, pero requieren
 
 La foundation monolítica y las fases CloudFormation `00`–`22` son alternativas de infraestructura; no deben desplegarse juntas en el mismo entorno.
 
-## Estado Git de entrega
+## Estado Git actual
 
-La implementación validada fue consolidada en:
+El último commit publicado continúa siendo:
 
 ```text
 Commit: bade50226322a7dc2560e59068e59434b9948212
 Mensaje: Complete local observability and AI platform
 Rama: main
 Remoto: origin/main
-Estado: local y remoto sincronizados; working tree limpio en la última verificación
 ```
 
-Este documento se creó después de ese commit; si se desean incluir estas actualizaciones documentales en Git, se debe crear un commit adicional de documentación. No se debe crear un commit vacío.
+La preparación AWS actual contiene cambios locales pendientes en templates, backend, ejemplos, documentación y scripts. `backend/alembic.ini` dejó de estar excluido por `.gitignore` y debe incluirse en el próximo commit para que las imágenes construidas desde un checkout limpio puedan ejecutar Alembic. No se creó commit ni push durante esta corrección; el estado debe revisarse antes de entregar o desplegar.
 
 ## Referencias
 

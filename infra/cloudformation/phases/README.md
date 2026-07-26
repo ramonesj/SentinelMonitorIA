@@ -55,6 +55,26 @@ La fase 19 no crea automáticamente OpenSearch ni un Bedrock Knowledge Base porq
 - Worker: `python -m src.workers.telemetry_worker`.
 - NAT: `t4g.micro` ARM64 para staging.
 
-Las fases de dominio (`15`–`18`) requieren un dominio real y se deben aplicar sólo después de comprobar delegación DNS. CloudFront requiere que el certificado ACM esté en `us-east-1`.
+La fase 14 puede usar el dominio predeterminado de CloudFront sin hosted zone ni dominio propio; enruta el frontend, la API, health, metrics y WebSocket al ALB. Una `AWS::CloudFront::Function` reescribe únicamente las rutas SPA sin extensión hacia `/index.html` y no convierte errores de API en respuestas `200` HTML. Las fases de dominio (`15`–`18`) son opcionales para un hostname propio y certificados ACM. CloudFront requiere que el certificado ACM esté en `us-east-1` sólo cuando se habilita un dominio custom.
+
+- ElastiCache Redis mantiene `TransitEncryptionEnabled=true`.
+- ECS envía `REDIS_TLS=true` y el backend usa `rediss://` con verificación del certificado.
+- Los entornos Compose locales mantienen `REDIS_TLS=false` porque Redis local no usa TLS.
+- RDS se migra mediante una tarea ECS one-off con `alembic upgrade head` antes de activar backend y worker.
+
+## Herramientas operativas AWS
+
+Desde la raíz, después de configurar credenciales AWS de forma segura:
+
+```powershell
+.\scripts\aws-preflight.ps1
+.\scripts\validate-cloudformation.ps1
+.\scripts\deploy-cloudformation-phases.ps1
+.\scripts\build-push-ecr.ps1 -ImageTag v0.1.0
+.\scripts\run-aws-migration.ps1
+.\scripts\publish-frontend.ps1
+```
+
+Los scripts no contienen access keys ni secretos. El stack name usa el prefijo `sentinel-monitoria-` para que los roles generados por CloudFormation coincidan con la restricción de `iam:PassRole`. `aws-preflight.ps1` espera inicialmente la cuenta `952763303883` y el usuario `arn:aws:iam::952763303883:user/ramonesj`; usar `-AllowDifferentPrincipal` sólo si se cambia deliberadamente al rol de despliegue.
 
 No hay credenciales en estos archivos. Los secretos de datos y aplicación se generan en Secrets Manager en las fases correspondientes.

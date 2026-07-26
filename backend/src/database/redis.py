@@ -25,18 +25,26 @@ class RedisManager:
         
         logger.info(
             "Initializing Redis connection",
-            redis_url=settings.redis_url
+            redis_host=settings.redis_host,
+            redis_port=settings.redis_port,
+            redis_tls=settings.redis_tls,
         )
         
         try:
-            # Create Redis connection
+            # Create Redis connection with certificate verification for TLS.
+            connection_options = {
+                "encoding": "utf-8",
+                "decode_responses": True,
+                "max_connections": 20,
+                "socket_keepalive": True,
+                "retry_on_timeout": True,
+            }
+            if settings.redis_tls:
+                connection_options["ssl_cert_reqs"] = "required"
+
             self.client = redis_async.from_url(
                 settings.redis_url,
-                encoding="utf-8",
-                decode_responses=True,
-                max_connections=20,
-                socket_keepalive=True,
-                retry_on_timeout=True,
+                **connection_options,
             )
             
             # Test connection

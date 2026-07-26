@@ -91,6 +91,7 @@ class Settings(BaseSettings):
     redis_host: str = "localhost"
     redis_port: int = 6379
     redis_password: Optional[str] = None
+    redis_tls: bool = False
     redis_db: int = 0
     redis_stream_prefix: str = "sentinel:stream"
     redis_stream_max_length: int = 10000
@@ -100,10 +101,11 @@ class Settings(BaseSettings):
     
     @property
     def redis_url(self) -> str:
-        """Build Redis DSN"""
+        """Build a Redis DSN with optional TLS transport."""
+        scheme = "rediss" if self.redis_tls else "redis"
         if self.redis_password:
-            return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
-        return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
+            return f"{scheme}://:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
+        return f"{scheme}://{self.redis_host}:{self.redis_port}/{self.redis_db}"
     
     # Telemetry Processing
     telemetry_batch_size: int = 1000

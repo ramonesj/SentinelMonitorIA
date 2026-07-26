@@ -43,6 +43,11 @@ Parameters:
     Type: String
     Default: http://localhost:3000
     Description: Comma-separated frontend origins for API CORS.
+  RedisTls:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Enable TLS for the ElastiCache Redis connection.
 
 Resources:
   BackendTaskDefinition:
@@ -114,6 +119,8 @@ Resources:
               Value: '6379'
             - Name: REDIS_DB
               Value: '0'
+            - Name: REDIS_TLS
+              Value: !Ref RedisTls
             - Name: REDIS_STREAM_PREFIX
               Value: sentinel:stream
             - Name: REDIS_STREAM_MAX_LENGTH
