@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SentinelMonitorIA · Guion de video para el jurado</title>
+  <link rel="stylesheet" href="jury-doc.css">
+</head>
+<body>
+  <section class="page">
+    <div class="cover">
+      <div class="brand-row"><div class="brand-mark"><span class="brand-dot"></span> SentinelMonitorIA</div><div>Guion de video · 5 minutos</div></div>
+      <div class="cover-main">
+        <img class="cover-logo" src="../../Imagenes/1769717477540.png" alt="Identidad visual de SentinelMonitorIA">
+        <div class="eyebrow">Evaluación AWS · Código Facilito</div>
+        <h1>Demostración breve, clara y verificable.</h1>
+        <h2>Guion de presentación para mostrar el recorrido telemetry → AIAnalysis → Alert y la conversación Lex V2.</h2>
+        <div class="rule"></div>
+        <div class="cover-meta">
+          <div><strong>Duración</strong>5:00 minutos</div>
+          <div><strong>Entorno</strong>AWS staging · us-east-1</div>
+          <div><strong>Datos</strong>Sintéticos y controlados</div>
+          <div><strong>Audiencia</strong>Jurado AWS y Código Facilito</div>
+        </div>
+      </div>
+      <div class="cover-footer"><span>Documento de apoyo para grabación</span><strong>SentinelMonitorIA</strong></div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="page-header"><strong>00 · Preparación</strong><span>Antes de grabar</span></div>
+    <div class="section-kicker">Objetivo de la presentación</div>
+    <h1>Mostrar un flujo completo en cinco minutos</h1>
+    <p class="lead">La demostración debe probar que SentinelMonitorIA recibe señales, las procesa de forma asíncrona, genera una alerta explicable y permite consultarla mediante un chat estructurado.</p>
+    <div class="grid-2">
+      <div class="card soft"><h3>Preparar en pantalla</h3><ul><li>Frontend S3 Website HTTP abierto.</li><li>Sesión demo ya iniciada.</li><li>Dashboard con health visible.</li><li>Chat Ask Sentinel listo.</li><li>Una alerta sintética reciente.</li></ul></div>
+      <div class="card soft"><h3>Verificar antes de grabar</h3><ul><li><code>/health</code> devuelve HTTP 200.</li><li><code>/api/v1/telemetry/health</code> está healthy.</li><li>Productor systemd está active.</li><li>AI worker está running.</li><li>Notification worker está en 0/0.</li></ul></div>
+    </div>
+    <div class="callout danger"><strong>Protección de secretos.</strong> Durante la grabación no mostrar contraseña, API key, archivo de entorno, tokens, valores de Secrets Manager ni comandos que los impriman. El dossier contiene las instrucciones de acceso para el jurado; este guion no expone secretos.</div>
+    <h2>Idea central</h2>
+    <p>Presentar el sistema como un flujo operativo real y persistente, no como una pantalla aislada: fuente controlada, ingesta autenticada, reglas de análisis, alerta visible y consulta conversacional.</p>
+    <div class="callout"><strong>Frase guía.</strong> “La demo muestra observabilidad explicable: cada alerta puede relacionarse con un batch, una regla, un análisis y su evidencia.”</div>
+    <div class="page-number">02</div>
+  </section>
+
+  <section class="page">
+    <div class="page-header"><strong>01 · 0:00–1:25</strong><span>Contexto y arquitectura</span></div>
+    <div class="section-kicker">Presentación inicial</div>
+    <h1>Qué mostrar y qué decir</h1>
+    <div class="timeline">
+      <div>0:00–0:25</div><div><strong>Acción:</strong> mostrar portada o dashboard.</div>
+      <div>0:25–0:55</div><div><strong>Acción:</strong> mostrar dashboard y, si cabe, el endpoint de health.</div>
+      <div>0:55–1:25</div><div><strong>Acción:</strong> mostrar sesión iniciada y estado operativo.</div>
+    </div>
+    <h2>Texto hablado · 0:00–0:25</h2>
+    <div class="callout"><p>“Hola. En este video presentaré SentinelMonitorIA, una plataforma de observabilidad y AIOps orientada a detectar señales operativas, analizarlas y generar alertas de forma controlada.</p><p>La demostración utiliza datos sintéticos, una cuenta demo y una fuente de telemetry controlada. No se utilizan datos reales ni se ejecutan acciones automáticas sobre la infraestructura.”</p></div>
+    <h2>Texto hablado · 0:25–0:55</h2>
+    <div class="callout"><p>“El frontend React está publicado en un S3 Website y se comunica con un Application Load Balancer. El ALB dirige las solicitudes al backend FastAPI desplegado en ECS.</p><p>El backend utiliza PostgreSQL para persistencia y Redis Streams para procesar los eventos de forma asíncrona. Sobre esta base funcionan el worker de telemetry, el worker de análisis y el sistema de alertas.”</p></div>
+    <h2>Texto hablado · 0:55–1:25</h2>
+    <div class="callout"><p>“La cuenta utilizada es una cuenta de aplicación independiente de AWS. La autenticación se realiza mediante JWT y la información está aislada dentro de su organización.</p><p>La API key del agente sintético es independiente del token de sesión y sólo permite escribir telemetry. Por seguridad, no mostraremos el secreto en pantalla.”</p></div>
+    <div class="page-number">03</div>
+  </section>
+
+  <section class="page">
+    <div class="page-header"><strong>02 · 1:25–2:55</strong><span>Lex V2 y productor</span></div>
+    <div class="section-kicker">Conversación y fuente viva</div>
+    <h1>La inteligencia se demuestra por capas</h1>
+    <h2>1:25–2:10 · Lex V2</h2>
+    <div class="card soft"><p><strong>Acción:</strong> abrir <em>Ask Sentinel</em> y escribir:</p><pre>¿Cuántas alertas abiertas hay?</pre><p>Después escribir:</p><pre>Resume las alertas críticas.</pre><p>Mostrar el footer: <code>Lex V2 · es_419 · flujo estructurado · lectura segura</code>.</p></div>
+    <div class="callout"><p>“El asistente conversacional utiliza Amazon Lex V2 para interpretar las solicitudes del usuario. Lex identifica intenciones como consultar alertas abiertas, revisar telemetry, consultar alertas críticas o pedir ayuda.</p><p>En este proyecto Lex V2 se utiliza sin Bedrock y sin embeddings. Lex realiza el reconocimiento de intención y el flujo conversacional; la respuesta operativa se produce mediante reglas determinísticas del backend.”</p></div>
+    <h2>2:10–2:55 · Productor sintético</h2>
+    <div class="card soft"><p><strong>Acción:</strong> mostrar la instancia <code>test-redes</code> o una diapositiva con su estado, sin mostrar credenciales.</p><ul><li>EC2 <code>t3.micro</code> con Amazon Linux 2023.</li><li>Usuario no root y administración por SSM.</li><li>Servicio <code>sentinel-mvp-demo-producer.service</code>.</li><li>Agent ID <code>ec2-test-redes-synthetic</code>.</li></ul></div>
+    <div class="callout"><p>“El productor sintético se ejecuta en la instancia EC2 existente, sin abrir puertos adicionales y con límites de CPU y memoria. Cada 30 a 60 segundos envía telemetry normal y cada 5 a 10 minutos genera un incidente controlado.</p><p>Los valores altos son datos sintéticos del payload; no generan carga real sobre la EC2. Cada batch lleva UUID y tags de trazabilidad.”</p></div>
+    <div class="page-number">04</div>
+  </section>
+
+  <section class="page">
+    <div class="page-header"><strong>03 · 2:55–4:25</strong><span>Incidente y controles</span></div>
+    <div class="section-kicker">De telemetry a alerta</div>
+    <h1>Hacer visible la evidencia</h1>
+    <h2>2:55–3:45 · Generación de alerta</h2>
+    <div class="flow"><div class="node">Producer<br>EC2</div><div class="arrow">→</div><div class="node">POST<br>202</div><div class="arrow">→</div><div class="node">Redis<br>Streams</div><div class="arrow">→</div><div class="node">AI worker</div><div class="arrow">→</div><div class="node">Alert<br>high</div></div>
+    <div class="card"><p><strong>Acción:</strong> actualizar la vista de alertas y abrir una alerta reciente.</p><p><strong>Señalar:</strong> severidad <code>high</code>, regla <code>metric.cpu.high</code>, Agent ID, evidencia del análisis y <code>analysis_id</code>.</p></div>
+    <div class="callout"><p>“El incidente sintético contiene CPU de 96%, memoria de 94%, un log con nivel error y un evento con severidad high.</p><p>El backend recibe el batch con HTTP 202 y lo procesa de forma asíncrona. El worker de telemetry persiste los datos y los envía al análisis. El detector identifica que CPU y memoria superan el umbral del 90%; el resultado se almacena como AIAnalysis y después se crea una alerta high.”</p></div>
+    <h2>3:45–4:25 · Servicios y notificaciones</h2>
+    <div class="card soft"><p><strong>Acción:</strong> mostrar el estado de servicios y colas.</p><pre>backend:              1/1
+telemetry worker:     1/1
+AI worker:            1/1
+notification worker:  0/0
+notifications queue:  0</pre></div>
+    <div class="callout"><p>“El backend, telemetry worker y AI worker están activos. El notification worker permanece apagado intencionalmente. Así demostramos la generación de alertas sin enviar correos, Slack, Discord, Teams ni webhooks externos.</p><p>Las acciones automáticas también están deshabilitadas mediante <code>AI_ENABLE_ACTIONS=false</code>.”</p></div>
+    <div class="page-number">05</div>
+  </section>
+
+  <section class="page">
+    <div class="page-header"><strong>04 · 4:25–5:00</strong><span>Seguridad y cierre</span></div>
+    <div class="section-kicker">Conclusión para el jurado</div>
+    <h1>Cerrar con valor técnico</h1>
+    <h2>4:25–4:50 · Seguridad y coste</h2>
+    <div class="card soft"><p><strong>Acción:</strong> mostrar la vista de controles o el dashboard, no la consola con secretos.</p><ul><li>EC2 reutilizada; sin ECS producer permanente.</li><li>Usuario no root, systemd y límites de recursos.</li><li>SSM en lugar de SSH y sin puertos nuevos.</li><li>Archivo de entorno protegido con modo 0600.</li><li>RDS y Redis sin cambios de infraestructura.</li><li>Datos sintéticos y notificaciones externas apagadas.</li></ul></div>
+    <div class="callout"><p>“La demostración reutiliza una EC2 que ya estaba encendida, por lo que no fue necesario crear un servicio ECS adicional para el productor. El agente se ejecuta con un usuario no root, límites de CPU y memoria, archivo de credenciales protegido y sin puertos de entrada nuevos.</p><p>RDS y Redis mantienen su infraestructura sin cambios. Sólo se persisten los datos sintéticos necesarios para demostrar el flujo del MVP.”</p></div>
+    <h2>4:50–5:00 · Mensaje final</h2>
+    <div class="card"><p><strong>Acción:</strong> volver al dashboard con una alerta visible y el footer Lex V2.</p></div>
+    <div class="callout"><p>“En resumen, SentinelMonitorIA recibe telemetry, la procesa de forma asíncrona, detecta anomalías, genera análisis y presenta alertas en el dashboard.</p><p>Lex V2 proporciona el flujo conversacional estructurado sin Bedrock ni embeddings, mientras que el productor sintético mantiene una demostración continua, controlada y reproducible.</p><p>El resultado es un MVP funcional que puede observarse en vivo sin activar notificaciones externas ni ejecutar acciones sobre la infraestructura.”</p></div>
+    <div class="footer-note">Mensaje opcional: “La demostración no muestra datos simulados aislados: muestra un flujo operativo completo y persistente, desde la fuente de telemetry hasta la alerta visible en el sistema.”</div>
+    <div class="page-number">06</div>
+  </section>
+
+  <section class="page">
+    <div class="page-header"><strong>05 · Contingencia</strong><span>Plan alternativo</span></div>
+    <div class="section-kicker">No improvisar durante la grabación</div>
+    <h1>Qué hacer si el estado no aparece</h1>
+    <div class="grid-2">
+      <div class="card soft"><h3>No aparece una alerta</h3><ol><li>Confirmar que el servicio systemd está activo.</li><li>Confirmar los dos endpoints de health.</li><li>Actualizar el dashboard.</li><li>Si hace falta, ejecutar previamente el smoke incident por SSM.</li><li>No ejecutar comandos de instalación durante la grabación.</li></ol></div>
+      <div class="card soft"><h3>El chat devuelve 401</h3><ol><li>Confirmar el S3 Website HTTP.</li><li>Hacer <code>Ctrl+F5</code>.</li><li>Cerrar sesión y autenticarse de nuevo.</li><li>Limpiar sólo la sesión de aplicación si persiste.</li></ol></div>
+    </div>
+    <h2>Limpieza de sesión</h2>
+    <pre>localStorage.removeItem("sentinelmonitoria.session");
+location.reload();</pre>
+    <div class="callout warning"><strong>Recordatorio.</strong> La API key de telemetry no debe utilizarse como token del chat. Si el chat falla durante la toma, continuar con la explicación de la arquitectura y mostrar una evidencia previamente preparada, sin revelar secretos.</div>
+    <h2>Checklist de salida</h2>
+    <ul class="checklist"><li>Dashboard y alerta visibles.</li><li>Footer Lex V2 visible.</li><li>HTTP 202 y <code>analysis_id</code> mencionados.</li><li>Notification worker 0/0 explicado.</li><li>Sin secretos en pantalla.</li><li>Duración cercana a cinco minutos.</li></ul>
+    <div class="callout"><strong>Última frase sugerida.</strong> “SentinelMonitorIA convierte señales operativas en evidencia accionable y explicable, manteniendo el control del coste, la seguridad y los efectos externos.”</div>
+    <div class="page-number">07</div>
+  </section>
+  <section class="page visual-assets-page">
+    <div class="page-header"><strong>06 · Evidencia visual</strong><span>Identidad y frontend</span></div>
+    <div class="section-kicker">Presentación oficial</div>
+    <h1>Logos y vista general del frontend</h1>
+    <p class="visual-note">Identidad visual utilizada para la evaluación AWS y Código Facilito, seguida de la captura general de acceso al frontend de SentinelMonitorIA.</p>
+    <div class="jury-logos">
+      <div class="logo-card"><img src="logos/logo%20aws.png" alt="Logo oficial de AWS"></div>
+      <div class="logo-card"><img src="logos/logo2%20codigo%20facilito.png" alt="Logo de Código Facilito"></div>
+    </div>
+    <figure class="frontend-overview">
+      <img src="Capturas/Screenshot_1.png" alt="Vista general del frontend SentinelMonitorIA con acceso y marcas de la evaluación">
+      <figcaption>Screenshot_1.png · Vista general del acceso al frontend y presentación de SentinelMonitorIA.</figcaption>
+    </figure>
+    <div class="callout"><strong>Referencia para la grabación.</strong> Esta vista funciona como apertura visual del video: muestra la identidad de la evaluación y el punto de entrada protegido de SentinelMonitorIA.</div>
+    <div class="page-number">08</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>07 · Capturas</strong><span>Frontend · 02–03</span></div>
+    <div class="section-kicker">Apoyo visual para el video</div>
+    <h1>Recorrido del frontend</h1>
+    <p class="visual-note">Capturas entregadas en <code>docs/jury/Capturas</code>. Pueden utilizarse como respaldo si la demostración en vivo necesita una vista preparada.</p>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_2.png" alt="Captura del frontend Screenshot 2"><figcaption>Screenshot_2.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_3.png" alt="Captura del frontend Screenshot 3"><figcaption>Screenshot_3.png</figcaption></figure>
+    </div>
+    <div class="page-number">09</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>08 · Capturas</strong><span>Frontend · 04–05</span></div>
+    <div class="section-kicker">Apoyo visual para el video</div>
+    <h1>Flujos de la aplicación</h1>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_4.png" alt="Captura del frontend Screenshot 4"><figcaption>Screenshot_4.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_5.png" alt="Captura del frontend Screenshot 5"><figcaption>Screenshot_5.png</figcaption></figure>
+    </div>
+    <div class="page-number">10</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>09 · Capturas</strong><span>Frontend · 06–07</span></div>
+    <div class="section-kicker">Apoyo visual para el video</div>
+    <h1>Dashboard y observabilidad</h1>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_6.png" alt="Captura del frontend Screenshot 6"><figcaption>Screenshot_6.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_7.png" alt="Captura del frontend Screenshot 7"><figcaption>Screenshot_7.png</figcaption></figure>
+    </div>
+    <div class="page-number">11</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>10 · Capturas</strong><span>Frontend · 08–09</span></div>
+    <div class="section-kicker">Apoyo visual para el video</div>
+    <h1>Operación y alertas</h1>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_8.png" alt="Captura del frontend Screenshot 8"><figcaption>Screenshot_8.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_9.png" alt="Captura del frontend Screenshot 9"><figcaption>Screenshot_9.png</figcaption></figure>
+    </div>
+    <div class="page-number">12</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>11 · Capturas</strong><span>Frontend · 10–11</span></div>
+    <div class="section-kicker">Apoyo visual para el video</div>
+    <h1>Conversación y estado del sistema</h1>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_10.png" alt="Captura del frontend Screenshot 10"><figcaption>Screenshot_10.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_11.png" alt="Captura del frontend Screenshot 11"><figcaption>Screenshot_11.png</figcaption></figure>
+    </div>
+    <div class="page-number">13</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>12 · Capturas</strong><span>Frontend · 12–13</span></div>
+    <div class="section-kicker">Apoyo visual para el video</div>
+    <h1>Detalle de la experiencia</h1>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_12.png" alt="Captura del frontend Screenshot 12"><figcaption>Screenshot_12.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_13.png" alt="Captura del frontend Screenshot 13"><figcaption>Screenshot_13.png</figcaption></figure>
+    </div>
+    <div class="page-number">14</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>13 · Capturas</strong><span>Frontend · 14–15</span></div>
+    <div class="section-kicker">Apoyo visual para el video</div>
+    <h1>Vistas complementarias</h1>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_14.png" alt="Captura del frontend Screenshot 14"><figcaption>Screenshot_14.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_15.png" alt="Captura del frontend Screenshot 15"><figcaption>Screenshot_15.png</figcaption></figure>
+    </div>
+    <div class="page-number">15</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>14 · Capturas</strong><span>Frontend · 16–17</span></div>
+    <div class="section-kicker">Apoyo visual para el video</div>
+    <h1>Últimas vistas del recorrido</h1>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_16.png" alt="Captura del frontend Screenshot 16"><figcaption>Screenshot_16.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_17.png" alt="Captura del frontend Screenshot 17"><figcaption>Screenshot_17.png</figcaption></figure>
+    </div>
+    <div class="callout"><strong>Apéndice visual.</strong> Las capturas sirven como respaldo del video y complementan la demostración en vivo sin mostrar secretos de acceso.</div>
+    <div class="page-number">16</div>
+  </section>
+</body>
+</html>

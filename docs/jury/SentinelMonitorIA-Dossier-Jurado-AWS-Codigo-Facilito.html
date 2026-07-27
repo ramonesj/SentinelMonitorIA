@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SentinelMonitorIA · Dossier Jurado AWS y Código Facilito</title>
+  <link rel="stylesheet" href="jury-doc.css">
+</head>
+<body>
+  <section class="page">
+    <div class="cover">
+      <div class="brand-row"><div class="brand-mark"><span class="brand-dot"></span> SentinelMonitorIA</div><div>Dossier técnico · Edición 1.0</div></div>
+      <div class="cover-main">
+        <img class="cover-logo" src="../../Imagenes/1769717477540.png" alt="Identidad visual de SentinelMonitorIA">
+        <div class="eyebrow">Evaluación AWS · Código Facilito</div>
+        <h1>Observabilidad y AIOps demostrables en vivo.</h1>
+        <h2>Arquitectura, código, seguridad, evidencia y operación del MVP AWS staging.</h2>
+        <div class="rule"></div>
+        <div class="cover-meta">
+          <div><strong>Cuenta</strong>952763303883 · us-east-1</div>
+          <div><strong>Frontend</strong>S3 Website HTTP</div>
+          <div><strong>Conversación</strong>Lex V2 · es_419</div>
+          <div><strong>Estado</strong>Staging temporal validado</div>
+        </div>
+      </div>
+      <div class="cover-footer"><span>Documento para evaluación técnica y demostración</span><strong>SentinelMonitorIA</strong></div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="page-header"><strong>SentinelMonitorIA</strong><span>Dossier para jurado</span></div>
+    <div class="section-kicker">Resumen ejecutivo</div>
+    <h1>Qué se está evaluando</h1>
+    <p class="lead">SentinelMonitorIA recibe métricas, logs y eventos; los persiste, analiza señales operativas con reglas determinísticas y presenta alertas dentro de una aplicación protegida por organización.</p>
+    <div class="flow"><div class="node">Frontend<br>S3 Website</div><div class="arrow">→</div><div class="node">ALB<br>HTTP/80</div><div class="arrow">→</div><div class="node">ECS<br>FastAPI</div><div class="arrow">→</div><div class="node">RDS + Redis<br>TLS</div></div>
+    <div class="flow"><div class="node">Telemetry<br>worker</div><div class="arrow">→</div><div class="node">AI<br>worker</div><div class="arrow">→</div><div class="node">AIAnalysis<br>+ Alert</div><div class="arrow">→</div><div class="node">Notifications<br>apagadas</div></div>
+    <div class="grid-3">
+      <div class="card soft"><div class="metric">01</div><div class="metric-label">AWS</div><p class="small">ECS, EC2, SSM, S3, ALB, RDS, Redis TLS, IAM, ECR y costes controlados.</p></div>
+      <div class="card soft"><div class="metric">02</div><div class="metric-label">Código</div><p class="small">FastAPI, React/Vite, contratos Pydantic, Python estándar, systemd y scripts reproducibles.</p></div>
+      <div class="card soft"><div class="metric">03</div><div class="metric-label">Evidencia</div><p class="small">HTTP 202, análisis, alertas high, Lex V2 y servicios observables en vivo.</p></div>
+    </div>
+    <div class="callout warning"><strong>Alcance.</strong> Es un staging temporal, no producción. Bedrock, embeddings, Knowledge Base, acciones y notificaciones externas no están activos.</div>
+    <div class="page-number">02</div>
+  </section>
+
+  <section class="page">
+    <div class="page-header"><strong>01 · Acceso</strong><span>URLs y credenciales</span></div>
+    <div class="section-kicker">Inicio de la evaluación</div>
+    <h1>Entrar a la demostración</h1>
+    <table><thead><tr><th>Recurso</th><th>Dirección</th><th>Uso</th></tr></thead><tbody>
+      <tr><td>Frontend recomendado</td><td class="wrap">http://sentinelmonitoria-staging-demo-952763303883-20260726060638.s3-website-us-east-1.amazonaws.com</td><td>Login y dashboard</td></tr>
+      <tr><td>API base</td><td class="wrap">http://sm-staging-alb-1278334952.us-east-1.elb.amazonaws.com</td><td>Backend FastAPI</td></tr>
+      <tr><td>Swagger</td><td class="wrap">/api/v1/docs</td><td>Contrato y pruebas</td></tr>
+      <tr><td>Health</td><td class="wrap">/health</td><td>Dependencias</td></tr>
+      <tr><td>Telemetry health</td><td class="wrap">/api/v1/telemetry/health</td><td>Motor telemetry</td></tr>
+      <tr><td>Metrics</td><td class="wrap">/metrics</td><td>Prometheus</td></tr>
+    </tbody></table>
+    <div class="callout danger"><strong>Usar S3 HTTP.</strong> No usar Amplify HTTPS para esta demo: el ALB sólo tiene HTTP/80 y el navegador puede bloquear las llamadas por mixed content.</div>
+    <h2>Cuenta de aplicación</h2>
+    <table><thead><tr><th>Campo</th><th>Valor</th></tr></thead><tbody>
+      <tr><td>Usuario</td><td><code>demo.staging.0726065814</code></td></tr>
+      <tr><td>Email</td><td><code>demo.staging.0726065814@example.com</code></td></tr>
+      <tr><td>Contraseña</td><td><code>S3ntinel!Demo2026</code></td></tr>
+      <tr><td>Rol</td><td><code>admin</code></td></tr>
+      <tr><td>Organización ID</td><td><code>871268b3-3238-422b-aeb6-19e06f4bf5a8</code></td></tr>
+    </tbody></table>
+    <h2>API key del productor</h2>
+    <p>Scope mínimo: <code>telemetry:write</code>. Sólo es válida para la ingesta de telemetry; no usarla en el chat ni en endpoints de sesión.</p>
+    <pre class="wrap">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhOGM4MzM0Zi01MGZmLTQ5N2QtODVkZC03YTAwYjA2NWI2ZDAiLCJ1c2VybmFtZSI6ImRlbW8uc3RhZ2luZy4wNzI2MDY1ODE0IiwidHlwZSI6ImFwaV9rZXkiLCJuYW1lIjoiTG9jYWwgdGVsZW1ldHJ5IGFnZW50Iiwib3JnIjoiODcxMjY4YjMtMzIzOC00MjJiLWFlYjYtMTllMDZmNGJmNWE4Iiwic2NvcGVzIjpbInRlbGVtZXRyeTp3cml0ZSJdLCJleHAiOjE4MTY2NDEyMjEsImlhdCI6MTc4NTEwNTIyMSwianRpIjoiNmNkMzk2NzUtMTllNy00ZWM0LWE5YzItMjJmOWJkM2VlNWE4In0.qoZHpYKu2l3HNfuXCQGTcx2qIlrQ32a07ELBIZ13zZ4</pre>
+    <div class="callout warning"><strong>Uso temporal.</strong> Estas credenciales se incluyen por solicitud del jurado. No reutilizarlas en producción y revocarlas después de la evaluación.</div>
+    <div class="page-number">03</div>
+  </section>
+
+  <section class="page">
+    <div class="page-header"><strong>02 · Conversación</strong><span>Lex V2 estructurado</span></div>
+    <div class="section-kicker">Sin Bedrock ni embeddings</div>
+    <h1>El chat entiende la operación</h1>
+    <p>Lex V2 realiza la comprensión conversacional estructurada. Identifica la intención, valida slots cuando son necesarios y entrega al backend una solicitud estructurada.</p>
+    <table><thead><tr><th>Propiedad</th><th>Valor validado</th></tr></thead><tbody>
+      <tr><td>Bot</td><td><code>XFVQNCQTHX</code></td></tr>
+      <tr><td>Alias</td><td><code>67MRXD4DQB</code> · staging</td></tr>
+      <tr><td>Locale</td><td><code>es_419</code></td></tr>
+      <tr><td>Intent probado</td><td><code>OpenAlertsIntent</code></td></tr>
+      <tr><td>Confianza observada</td><td><code>0.9</code></td></tr>
+      <tr><td>Estado</td><td><code>Close</code></td></tr>
+    </tbody></table>
+    <h2>Intenciones disponibles</h2>
+    <div class="grid-3"><div class="card"><h3>OpenAlertsIntent</h3><p class="small">Consultar alertas abiertas.</p></div><div class="card"><h3>CriticalAlertsIntent</h3><p class="small">Revisar señales críticas.</p></div><div class="card"><h3>HealthSummaryIntent</h3><p class="small">Consultar estado de telemetry.</p></div><div class="card"><h3>AssistanceIntent</h3><p class="small">Explicar capacidades.</p></div><div class="card"><h3>FallbackIntent</h3><p class="small">Manejar solicitudes no reconocidas.</p></div></div>
+    <div class="callout"><strong>Separación de responsabilidades.</strong> Lex interpreta la conversación; el backend conserva autorización, aislamiento por organización y reglas de respuesta. Bedrock no se invoca y la Knowledge Base no se ingiere.</div>
+    <h2>Pruebas para mostrar</h2>
+    <pre>¿Cuántas alertas abiertas hay?
+Resume las alertas críticas.
+Revisa el estado de telemetry.</pre>
+    <p>El footer visible en staging es:</p>
+    <pre>Lex V2 · es_419 · flujo estructurado · lectura segura</pre>
+    <div class="page-number">04</div>
+  </section>
+
+  <section class="page">
+    <div class="page-header"><strong>03 · Fuente viva</strong><span>Productor EC2</span></div>
+    <div class="section-kicker">Telemetry sintética controlada</div>
+    <h1>Un agente separado para la demo</h1>
+    <table><thead><tr><th>Propiedad</th><th>Valor</th></tr></thead><tbody>
+      <tr><td>EC2</td><td><code>test-redes</code> · <code>i-0c56b84145cd08d22</code></td></tr>
+      <tr><td>Tipo / OS</td><td><code>t3.micro</code> · Amazon Linux 2023 · x86_64</td></tr>
+      <tr><td>Administración</td><td>SSM; sin SSH ni puertos nuevos</td></tr>
+      <tr><td>Usuario</td><td><code>sentinel-demo</code>, no root</td></tr>
+      <tr><td>Script</td><td><code>/opt/sentinel-mvp/mvp-demo-producer.py</code></td></tr>
+      <tr><td>Systemd</td><td><code>sentinel-mvp-demo-producer.service</code></td></tr>
+      <tr><td>Agent ID</td><td><code>ec2-test-redes-synthetic</code></td></tr>
+    </tbody></table>
+    <h2>Frecuencias y payloads</h2>
+    <div class="grid-2"><div class="card soft"><h3>Heartbeat normal</h3><ul><li>CPU: 25–55%.</li><li>Memoria: 35–65%.</li><li>Log: <code>info</code>.</li><li>Evento: <code>info</code>.</li><li>Cada 30–60 segundos.</li></ul></div><div class="card soft"><h3>Incidente controlado</h3><ul><li>CPU: 96%.</li><li>Memoria: 94%.</li><li>Log: <code>error</code>.</li><li>Evento: <code>high</code>.</li><li>Cada 5–10 minutos.</li></ul></div></div>
+    <p>Los valores altos son datos del payload; el productor no genera carga de CPU o memoria real. Cada batch tiene un UUID y tags de trazabilidad:</p>
+    <pre>{"environment":"mvp-demo","synthetic":"true","source":"continuous-demo"}</pre>
+    <h2>Límites del servicio</h2>
+    <pre>User=sentinel-demo
+Restart=always
+CPUQuota=5%
+MemoryMax=128M
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict</pre>
+    <div class="page-number">05</div>
+  </section>
+
+  <section class="page">
+    <div class="page-header"><strong>04 · Flujo</strong><span>Telemetry a alerta</span></div>
+    <div class="section-kicker">Procesamiento asíncrono</div>
+    <h1>La evidencia es observable</h1>
+    <div class="flow"><div class="node">EC2<br>producer</div><div class="arrow">→</div><div class="node">POST<br>telemetry 202</div><div class="arrow">→</div><div class="node">Redis<br>Streams</div><div class="arrow">→</div><div class="node">AI<br>worker</div></div>
+    <div class="flow"><div class="node">Rules<br>detector</div><div class="arrow">→</div><div class="node">AIAnalysis</div><div class="arrow">→</div><div class="node">Alert<br>high</div><div class="arrow">→</div><div class="node">Notifications<br>0</div></div>
+    <h2>Reglas que disparan findings</h2>
+    <ul><li>CPU con unidad <code>percent</code> mayor o igual a 90.</li><li>Memoria con unidad <code>percent</code> mayor o igual a 90.</li><li>Log con nivel <code>error</code> o <code>fatal</code>.</li><li>Evento con severidad <code>high</code> o <code>critical</code>.</li></ul>
+    <h2>Evidencia validada</h2>
+    <table><thead><tr><th>Prueba</th><th>Resultado</th></tr></thead><tbody>
+      <tr><td>Incidente one-shot</td><td class="status">HTTP 202</td></tr>
+      <tr><td>Health general</td><td class="status">HTTP 200</td></tr>
+      <tr><td>Telemetry health</td><td class="status">HTTP 200 · healthy</td></tr>
+      <tr><td>Chat autenticado</td><td class="status">HTTP 200 · conversación creada</td></tr>
+      <tr><td>Alertas demo</td><td class="status">high · metric.cpu.high · analysis_id</td></tr>
+      <tr><td>Productor</td><td class="status">systemd enabled/active</td></tr>
+      <tr><td>Notification worker</td><td class="status">desired 0 · running 0</td></tr>
+    </tbody></table>
+    <div class="callout warning"><strong>Interpretación de colas.</strong> `notifications=0` es la condición esperada. En streams distintos de telemetry, la métrica de historial puede mostrar `XLEN`; no debe interpretarse automáticamente como backlog pendiente.</div>
+    <div class="page-number">06</div>
+  </section>
+
+  <section class="page">
+    <div class="page-header"><strong>05 · Criterios AWS</strong><span>Cloud y operación</span></div>
+    <div class="section-kicker">Qué puede revisar el jurado AWS</div>
+    <h1>Arquitectura y gobierno</h1>
+    <div class="grid-2"><div class="card"><h3>Arquitectura desplegada</h3><ul><li>S3 Website para frontend.</li><li>ALB HTTP/80.</li><li>ECS/Fargate ARM64.</li><li>RDS PostgreSQL privado.</li><li>Redis privado con TLS.</li><li>ECR, Secrets Manager y CloudWatch.</li></ul></div><div class="card"><h3>Operación segura</h3><ul><li>EC2 gestionada por SSM.</li><li>Sin SSH ni puertos nuevos.</li><li>Usuario no root.</li><li>Systemd con CPU/memoria limitada.</li><li>Workers controlados por desired/running count.</li><li>Acciones externas apagadas.</li></ul></div></div>
+    <h2>Controles de alcance</h2>
+    <ul class="checklist"><li>RDS y Redis no cambiaron su infraestructura.</li><li>No se modificaron NAT, rutas o security groups.</li><li>El notification worker está en 0/0.</li><li><code>AI_ENABLE_ACTIONS=false</code>.</li><li>No se invoca Bedrock ni se usan embeddings.</li><li>Los datos enviados son sintéticos y etiquetados.</li></ul>
+    <h2>Coste</h2>
+    <p>Se reutiliza una EC2 `t3.micro` ya encendida; el coste marginal del productor es prácticamente cero. No se creó un ECS producer permanente. La fuente consume una fracción limitada de CPU y memoria.</p>
+    <div class="callout"><strong>Bloqueos conocidos.</strong> CloudFront/HTTPS y autorización Bedrock no forman parte de esta demo. El flujo público usa S3 HTTP y el AI worker responde con reglas determinísticas.</div>
+    <div class="page-number">07</div>
+  </section>
+
+  <section class="page">
+    <div class="page-header"><strong>06 · Criterios Código Facilito</strong><span>Código y reproducibilidad</span></div>
+    <div class="section-kicker">Qué puede revisar el jurado de Código Facilito</div>
+    <h1>Implementación mantenible</h1>
+    <div class="grid-2"><div class="card soft"><h3>Backend</h3><ul><li>FastAPI y Pydantic.</li><li>JWT y API keys con scopes.</li><li>Aislamiento por organización.</li><li>Persistencia PostgreSQL.</li><li>Redis Streams y workers.</li><li>Reglas de anomalías.</li></ul></div><div class="card soft"><h3>Frontend</h3><ul><li>React + Vite.</li><li>Cliente API centralizado.</li><li>Chat con proveedor dinámico.</li><li>Etiqueta Lex V2 visible.</li><li>Build de staging reproducible.</li><li>Dashboard de health y alertas.</li></ul></div><div class="card soft"><h3>Agente</h3><ul><li>Python estándar sin dependencias.</li><li>UUID por batch.</li><li>Retry con backoff.</li><li>Probes de salud.</li><li>Modo continuo y `--once`.</li><li>Tags de trazabilidad.</li></ul></div><div class="card soft"><h3>Operación</h3><ul><li>Instalación SSM.</li><li>systemd no root.</li><li>CPU/memoria limitadas.</li><li>Logs en journald.</li><li>Archivo de entorno 0600.</li><li>Instalador idempotente.</li></ul></div></div>
+    <h2>Archivos principales</h2>
+    <table><thead><tr><th>Archivo</th><th>Responsabilidad</th></tr></thead><tbody>
+      <tr><td><code>scripts/mvp-demo-producer.py</code></td><td>Batches normales/incidentes, intervalos, retry y health.</td></tr>
+      <tr><td><code>scripts/install-mvp-demo-producer.ps1</code></td><td>Copia SSM, usuario, systemd, env protegido y smoke.</td></tr>
+      <tr><td><code>frontend/src/ChatWidget.jsx</code></td><td>Etiqueta Lex V2/modo local y respuesta del proveedor.</td></tr>
+      <tr><td><code>scripts/publish-frontend.ps1</code></td><td>Build y publicación S3.</td></tr>
+      <tr><td><code>backend/src/services/ai/analyzer.py</code></td><td>Reglas CPU, memoria, logs y eventos.</td></tr>
+      <tr><td><code>backend/src/services/chat/providers.py</code></td><td>Lex V2 y fallback determinístico.</td></tr>
+    </tbody></table>
+    <h2>Validación técnica</h2>
+    <p class="status">Diagnósticos sin errores · hash remoto igual al local · build Vite correcto · `git diff --check` correcto.</p>
+    <div class="page-number">08</div>
+  </section>
+
+  <section class="page">
+    <div class="page-header"><strong>07 · Operación</strong><span>Demo y cierre</span></div>
+    <div class="section-kicker">Runbook breve</div>
+    <h1>Ejecutar y cerrar la evaluación</h1>
+    <h2>Recorrido de cinco minutos</h2>
+    <ol><li>Abrir S3 HTTP y hacer `Ctrl+F5`.</li><li>Iniciar sesión con la cuenta demo.</li><li>Mostrar health del dashboard.</li><li>Consultar alertas con el chat.</li><li>Mostrar footer Lex V2.</li><li>Actualizar alertas y abrir una alerta high.</li><li>Mostrar `analysis_id` y evidencia CPU.</li><li>Mostrar notification worker 0/0 y cola notifications 0.</li></ol>
+    <h2>Si el chat responde 401</h2>
+    <pre>localStorage.removeItem("sentinelmonitoria.session");
+location.reload();</pre>
+    <p>Después iniciar sesión de nuevo. El API key del productor no sirve como access JWT.</p>
+    <h2>Si no aparece una alerta</h2>
+    <p>El heartbeat normal no genera alertas. Esperar 5–10 minutos o ejecutar previamente el smoke incident desde SSM; después de recibir HTTP 202, actualizar el dashboard.</p>
+    <h2>Cierre posterior</h2>
+    <ol><li>Detener el servicio por SSM: <code>systemctl disable --now sentinel-mvp-demo-producer.service</code>.</li><li>Revocar la API key del
+ productor sintético.</li><li>Desactivar o cambiar el usuario demo.</li><li>Retirar secretos de los documentos si el repositorio se publica.</li><li>Revisar ECS, RDS, Redis, ALB, S3, CloudWatch y EC2 para controlar costes.</li></ol>
+    <h2>Archivos de referencia</h2>
+    <table><thead><tr><th>Recurso</th><th>Contenido</th></tr></thead><tbody>
+      <tr><td><code>README.md</code></td><td>Runbook general, arquitectura, acceso y estado del staging.</td></tr>
+      <tr><td><code>docs/deployment/mvp-staging.md</code></td><td>Despliegue, ECS, RDS, Redis y validaciones.</td></tr>
+      <tr><td><code>scripts/mvp-demo-producer.py</code></td><td>Fuente sintética, intervalos, payloads y reintentos.</td></tr>
+      <tr><td><code>scripts/install-mvp-demo-producer.ps1</code></td><td>Instalación SSM, usuario, systemd y smoke test.</td></tr>
+      <tr><td><code>frontend/src/ChatWidget.jsx</code></td><td>Etiqueta visible de Lex V2 y proveedor de respuesta.</td></tr>
+      <tr><td><code>backend/src/services/ai/analyzer.py</code></td><td>Reglas CPU, memoria, logs y eventos.</td></tr>
+    </tbody></table>
+    <div class="callout"><strong>Conclusión.</strong> La evidencia une una fuente sintética controlada, ingesta autenticada, procesamiento asíncrono, análisis explicable, alerta persistida y una conversación Lex V2 segura por organización.</div>
+    <div class="footer-note">Documento preparado para evaluación. El staging es temporal; retirar o rotar credenciales y detener el productor después de la sesión del jurado.</div>
+    <div class="page-number">09</div>
+  </section>
+  <section class="page visual-assets-page">
+    <div class="page-header"><strong>08 · Evidencia visual</strong><span>Identidad y frontend</span></div>
+    <div class="section-kicker">Presentación oficial</div>
+    <h1>Logos y vista general del frontend</h1>
+    <p class="visual-note">Identidad visual utilizada para la evaluación AWS y Código Facilito, seguida de la captura general de acceso al frontend de SentinelMonitorIA.</p>
+    <div class="jury-logos">
+      <div class="logo-card"><img src="logos/logo%20aws.png" alt="Logo oficial de AWS"></div>
+      <div class="logo-card"><img src="logos/logo2%20codigo%20facilito.png" alt="Logo de Código Facilito"></div>
+    </div>
+    <figure class="frontend-overview">
+      <img src="Capturas/Screenshot_1.png" alt="Vista general del frontend SentinelMonitorIA con acceso y marcas de la evaluación">
+      <figcaption>Screenshot_1.png · Vista general del acceso al frontend y presentación de SentinelMonitorIA.</figcaption>
+    </figure>
+    <div class="callout"><strong>Lectura de la evidencia.</strong> La pantalla muestra el punto de entrada del producto: acceso protegido, identidad de SentinelMonitorIA y una interfaz preparada para observar señales y operar alertas.</div>
+    <div class="page-number">10</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>09 · Capturas</strong><span>Frontend · 02–03</span></div>
+    <div class="section-kicker">Evidencia visual del producto</div>
+    <h1>Recorrido del frontend</h1>
+    <p class="visual-note">Capturas entregadas en <code>docs/jury/Capturas</code>. Se conservan como evidencia visual del flujo de la aplicación.</p>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_2.png" alt="Captura del frontend Screenshot 2"><figcaption>Screenshot_2.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_3.png" alt="Captura del frontend Screenshot 3"><figcaption>Screenshot_3.png</figcaption></figure>
+    </div>
+    <div class="page-number">11</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>10 · Capturas</strong><span>Frontend · 04–05</span></div>
+    <div class="section-kicker">Evidencia visual del producto</div>
+    <h1>Flujos de la aplicación</h1>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_4.png" alt="Captura del frontend Screenshot 4"><figcaption>Screenshot_4.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_5.png" alt="Captura del frontend Screenshot 5"><figcaption>Screenshot_5.png</figcaption></figure>
+    </div>
+    <div class="page-number">12</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>11 · Capturas</strong><span>Frontend · 06–07</span></div>
+    <div class="section-kicker">Evidencia visual del producto</div>
+    <h1>Dashboard y observabilidad</h1>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_6.png" alt="Captura del frontend Screenshot 6"><figcaption>Screenshot_6.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_7.png" alt="Captura del frontend Screenshot 7"><figcaption>Screenshot_7.png</figcaption></figure>
+    </div>
+    <div class="page-number">13</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>12 · Capturas</strong><span>Frontend · 08–09</span></div>
+    <div class="section-kicker">Evidencia visual del producto</div>
+    <h1>Operación y alertas</h1>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_8.png" alt="Captura del frontend Screenshot 8"><figcaption>Screenshot_8.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_9.png" alt="Captura del frontend Screenshot 9"><figcaption>Screenshot_9.png</figcaption></figure>
+    </div>
+    <div class="page-number">14</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>13 · Capturas</strong><span>Frontend · 10–11</span></div>
+    <div class="section-kicker">Evidencia visual del producto</div>
+    <h1>Conversación y estado del sistema</h1>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_10.png" alt="Captura del frontend Screenshot 10"><figcaption>Screenshot_10.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_11.png" alt="Captura del frontend Screenshot 11"><figcaption>Screenshot_11.png</figcaption></figure>
+    </div>
+    <div class="page-number">15</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>14 · Capturas</strong><span>Frontend · 12–13</span></div>
+    <div class="section-kicker">Evidencia visual del producto</div>
+    <h1>Detalle de la experiencia</h1>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_12.png" alt="Captura del frontend Screenshot 12"><figcaption>Screenshot_12.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_13.png" alt="Captura del frontend Screenshot 13"><figcaption>Screenshot_13.png</figcaption></figure>
+    </div>
+    <div class="page-number">16</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>15 · Capturas</strong><span>Frontend · 14–15</span></div>
+    <div class="section-kicker">Evidencia visual del producto</div>
+    <h1>Vistas complementarias</h1>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_14.png" alt="Captura del frontend Screenshot 14"><figcaption>Screenshot_14.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_15.png" alt="Captura del frontend Screenshot 15"><figcaption>Screenshot_15.png</figcaption></figure>
+    </div>
+    <div class="page-number">17</div>
+  </section>
+
+  <section class="page capture-page">
+    <div class="page-header"><strong>16 · Capturas</strong><span>Frontend · 16–17</span></div>
+    <div class="section-kicker">Evidencia visual del producto</div>
+    <h1>Últimas vistas del recorrido</h1>
+    <div class="capture-pair">
+      <figure class="capture-card"><img src="Capturas/Screenshot_16.png" alt="Captura del frontend Screenshot 16"><figcaption>Screenshot_16.png</figcaption></figure>
+      <figure class="capture-card"><img src="Capturas/Screenshot_17.png" alt="Captura del frontend Screenshot 17"><figcaption>Screenshot_17.png</figcaption></figure>
+    </div>
+    <div class="callout"><strong>Apéndice visual.</strong> Las capturas complementan la evidencia técnica del dossier y permiten revisar la experiencia del frontend sin depender de una sesión en vivo.</div>
+    <div class="page-number">18</div>
+  </section>
+</body>
+</html>

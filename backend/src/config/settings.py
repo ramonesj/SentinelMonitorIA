@@ -139,7 +139,10 @@ class Settings(BaseSettings):
     anomaly_memory_threshold: float = 90.0
 
     # Chatbot conversation
-    chat_provider: str = "rules"  # rules now; lex_bedrock is a future AWS adapter
+    chat_provider: str = "rules"  # rules or lex_bedrock
+    lex_bot_id: Optional[str] = None
+    lex_bot_alias_id: Optional[str] = None
+    lex_locale_id: str = "es_419"
     chat_context_alert_limit: int = 20
     chat_max_message_length: int = 2000
     chat_enable_actions: bool = False

@@ -13,6 +13,18 @@ Parameters:
     Type: String
     Default: '2026-07-23'
     AllowedPattern: '^\d{4}-\d{2}-\d{2}$'
+  LexBotId:
+    Type: String
+    Default: XFVQNCQTHX
+  LexBotAliasId:
+    Type: String
+    Default: 67MRXD4DQB
+  AiModelId:
+    Type: String
+    Default: amazon.nova-lite-v1:0
+  AiKnowledgeBaseId:
+    Type: String
+    Default: 0MZLR4E2G7
 
 Resources:
   EcsTaskExecutionRole:
@@ -62,6 +74,23 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLexAndBedrockChat
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lex:RecognizeText
+                Resource: !Sub arn:${AWS::Partition}:lex:${AWS::Region}:${AWS::AccountId}:bot-alias/${LexBotId}/${LexBotAliasId}
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource: !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${AiModelId}
+              - Effect: Allow
+                Action:
+                  - bedrock:Retrieve
+                Resource: !Sub arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/${AiKnowledgeBaseId}
       Tags:
         - Key: Name
           Value: !Sub sentinel-monitoria-${EnvironmentName}-backend-task-role

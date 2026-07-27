@@ -1,16 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import { sendChatMessage } from "./api";
 
+const configuredProvider = (import.meta.env.VITE_CHAT_PROVIDER || "rules").trim().toLowerCase();
+
 function messageId() {
   return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function welcomeMessage() {
+function providerLabel(provider) {
+  if (provider === "lex_bedrock" || provider === "lex_rules") {
+    return "Lex V2 · es_419 · flujo estructurado · lectura segura";
+  }
+  if (provider === "rules") {
+    return "Modo local · reglas · lectura segura";
+  }
+  return "Proveedor backend · lectura segura";
+}
+
+function welcomeMessage(provider = configuredProvider) {
   return {
     id: "welcome",
     role: "assistant",
     content: "Hola. Puedo consultar las alertas recientes de tu organización y resumir su estado operativo. Las acciones automáticas están deshabilitadas.",
-    provider: "rules",
+    provider,
     suggestions: ["¿Cuántas alertas abiertas hay?", "Resume las alertas críticas", "¿Qué puedes hacer?"]
   };
 }
@@ -20,6 +32,7 @@ function ChatWidget({ session }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState(() => [welcomeMessage()]);
+  const [activeProvider, setActiveProvider] = useState(configuredProvider);
   const [conversationId, setConversationId] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -27,6 +40,7 @@ function ChatWidget({ session }) {
 
   useEffect(() => {
     setMessages([welcomeMessage()]);
+    setActiveProvider(configuredProvider);
     setConversationId("");
     setDraft("");
     setError("");
@@ -52,12 +66,14 @@ function ChatWidget({ session }) {
         message,
         ...(conversationId ? { conversation_id: conversationId } : {})
       });
+      const responseProvider = response.provider || configuredProvider;
+      setActiveProvider(responseProvider);
       setConversationId(response.conversation_id || "");
       setMessages((current) => [...current, {
         id: messageId(),
         role: "assistant",
         content: response.message || "No recibí una respuesta del proveedor de chat.",
-        provider: response.provider || "rules",
+        provider: responseProvider,
         suggestions: Array.isArray(response.suggestions) ? response.suggestions : [],
         sources: Array.isArray(response.sources) ? response.sources : [],
         contextSummary: response.context_summary || null
@@ -76,6 +92,7 @@ function ChatWidget({ session }) {
 
   const reset = () => {
     setMessages([welcomeMessage()]);
+    setActiveProvider(configuredProvider);
     setConversationId("");
     setDraft("");
     setError("");
@@ -88,7 +105,7 @@ function ChatWidget({ session }) {
       {open && <section className="chat-panel" aria-labelledby="chat-heading">
         <header className="chat-panel-header">
           <div>
-            <span className="chat-kicker">LOCAL INTELLIGENCE</span>
+            <span className="chat-kicker">{activeProvider === "lex_bedrock" || activeProvider === "lex_rules" ? "LEX V2 ROUTING" : "LOCAL INTELLIGENCE"}</span>
             <h2 id="chat-heading">Operations assistant</h2>
             <p>Contexto de alertas, sin acciones automáticas</p>
           </div>
@@ -102,7 +119,7 @@ function ChatWidget({ session }) {
             <div className="chat-message-bubble">
               <span className="chat-message-role">{message.role === "user" ? "Tú" : "Asistente"}</span>
               <p>{message.content}</p>
-              {message.role === "assistant" && message.contextSummary && <small className="chat-context-note">{message.contextSummary.alerts_considered || 0} alertas consultadas · proveedor {message.provider}</small>}
+              {message.role === "assistant" && message.contextSummary && <small className="chat-context-note">{message.contextSummary.alerts_considered || 0} alertas consultadas · {providerLabel(message.provider)}</small>}
             </div>
             {message.role === "assistant" && index === messages.length - 1 && !sending && message.suggestions?.length > 0 && <div className="chat-suggestions">
               {message.suggestions.slice(0, 3).map((suggestion) => <button type="button" key={suggestion} onClick={() => sendMessage(suggestion)}>{suggestion}</button>)}
@@ -115,7 +132,7 @@ function ChatWidget({ session }) {
           <input value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} placeholder="Pregunta por el estado operativo..." aria-label="Mensaje para el asistente" disabled={sending} />
           <button type="submit" disabled={sending || !draft.trim()} aria-label="Enviar mensaje">↗</button>
         </form>
-        <footer className="chat-panel-footer">Modo local · reglas · lectura segura</footer>
+        <footer className="chat-panel-footer">{providerLabel(activeProvider)}</footer>
       </section>}
       <button type="button" className="chat-launcher" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="chat-heading">
         <span className="chat-launcher-icon">{open ? "×" : "✦"}</span>

@@ -1,7 +1,9 @@
 # SentinelMonitorIA | Observabilidad — MVP AWS Staging
 
 **Última actualización:** 23 de julio de 2026
-**Estado:** staging temporal, validado para demostración; no es producción.
+**Estado:** staging temporal, validado para demostración; Amplify eliminado y S3 Website activo; no es producción.
+
+Las referencias históricas a Amplify y al worker IA detenido se conservan como contexto del preflight. El estado operativo posterior a la migración está consolidado en la sección **Estado final de la migración** al final de este documento.
 
 Este documento contiene las URLs de conexión y el estado operativo del MVP desplegado en AWS. No incluye contraseñas, API keys, JWT, access keys ni endpoints privados de RDS/Redis.
 
@@ -209,3 +211,36 @@ Consecuencias:
 - El backend y el worker activos tienen coste continuo; los workers de IA/notificaciones permanecen detenidos.
 
 [Volver al índice de deployment](README.md) · [Índice general](../README.md)
+
+## Estado final de la migración
+
+Este bloque es la referencia operativa posterior a la migración autorizada:
+
+- **Frontend:** publicado directamente en el S3 Website `http://sentinelmonitoria-staging-demo-952763303883-20260726060638.s3-website-us-east-1.amazonaws.com`.
+- **API:** el bundle se construyó con `VITE_API_BASE_URL=http://sm-staging-alb-1278334952.us-east-1.elb.amazonaws.com`; el origen S3 está configurado en CORS.
+- **Amplify:** la app `d18ufjvtwidd1p` fue eliminada después de validar S3. La eliminación no afectó al bucket Website.
+- **Backend ECS:** `Desired=1`, `Running=1`, task definition revision `5`, imagen `backend:v0.1.2`, `CHAT_PROVIDER=lex_bedrock`, locale `es_419` y CORS S3.
+- **Lex V2:** bot `XFVQNCQTHX`, alias `67MRXD4DQB` (`staging`), locale construido `es_419`, con `OpenAlertsIntent`, `CriticalAlertsIntent`, `HealthSummaryIntent`, `AssistanceIntent` y `FallbackIntent`. La llamada de reconocimiento validada devolvió `OpenAlertsIntent`.
+- **AI worker:** `Desired=1`, `Running=1`, task definition revision `3`, imagen `worker:v0.1.3`, `AI_PROVIDER=bedrock`, `AI_MODEL_ID=amazon.nova-lite-v1:0`, Knowledge Base `0MZLR4E2G7` y `NOTIFICATION_CHANNELS=log`.
+- **Notification worker:** permanece en `Desired=0`, `Running=0`; no se activaron emails, webhooks ni otros destinos.
+- **RDS y Redis:** no se modificaron sus recursos ni su configuración de infraestructura.
+
+### Limitación actual de Bedrock
+
+La cuenta mantiene `NOT_AUTHORIZED` para `amazon.nova-lite-v1:0` y `amazon.titan-embed-text-v2:0`. Por ello el AI worker está activo en modo degradado seguro: ejecuta reglas determinísticas, crea `AIAnalysis` y `Alert`, usa contexto local cuando falla la recuperación de Knowledge Base y registra el error del proveedor sin reintentos infinitos. La explicación generada por Nova Lite y el contexto RAG quedarán disponibles cuando AWS autorice ambos modelos; no se deben presentar como validados todavía.
+
+### Demo validada tras la migración
+
+Se envió un batch aislado con CPU `97%`, memoria `96%` y un log `error`. El worker generó un `AIAnalysis` con hallazgos/recomendaciones y una alerta `high` abierta; el chat autenticado respondió desde la organización de prueba con `provider=lex_bedrock` y una consulta de alertas abiertas. La API key temporal utilizada para la ingesta fue revocada después de la prueba.
+
+### Validación técnica final
+
+- Docker Desktop/daemon y Compose: disponibles; build ARM64 backend/worker completado y publicado en ECR con tags inmutables `v0.1.2`/`v0.1.3`.
+- Smoke local: backend pasa todos los endpoints requeridos; frontend local permanece opcional.
+- Smoke staging: ALB y S3 Website responden HTTP `200` en las rutas verificadas.
+- Backend tests: `19 passed, 1 skipped` (el skip corresponde a la integración Redis worker con `QUEUE_PROVIDER=redis`).
+- Frontend build Vite: correcto; el bundle remoto contiene la URL del ALB.
+- CloudFormation: fases IAM, backend ECS y AI worker desplegadas correctamente con el perfil `sentinel-monitoria`.
+- El publicador `scripts/publish-frontend.ps1` ya usa S3 Website + ALB, valida que el bucket tenga Website configuration y no intenta crear invalidaciones CloudFront.
+
+S3 Website y ALB siguen siendo HTTP temporales. CloudFront/HTTPS, autorización de modelos Bedrock y la ingesta efectiva de la Knowledge Base siguen siendo pendientes de infraestructura o cuenta, no deben confundirse con el flujo funcional ya validado.

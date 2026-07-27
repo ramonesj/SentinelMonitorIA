@@ -5,6 +5,7 @@ Esta sección documenta dos superficies relacionadas pero distintas: el sistema 
 ## Documentos
 
 - [Arquitectura AWS en Markdown](sentinelmonitoria-aws-architecture.md): componentes, IA, alertas, relaciones, red y fases.
+- [Diagrama completo de infraestructura AWS](sentinelmonitoria-aws-infrastructure.md): estado real de staging, arquitectura objetivo, flujos, seguridad y operación.
 - [Diagrama AWS editable](sentinelmonitoria-aws-architecture.drawio): fuente Draw.io editable con formas/estilos de recursos AWS.
 - [Arquitectura del agente](agent-architecture.md): Vector, fuentes de telemetría, transformaciones, buffers y sink HTTP.
 - [Plan de despliegue AWS](../deployment/README.md): relación entre la arquitectura y los stacks CloudFormation.

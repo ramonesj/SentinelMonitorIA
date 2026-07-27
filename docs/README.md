@@ -21,6 +21,7 @@ Este índice reúne la documentación vigente del repositorio. El flujo local co
 
 - [Arquitectura local y AWS](architecture/README.md): alcance, componentes, redes, flujos y decisiones.
 - [Vista AWS en Markdown](architecture/sentinelmonitoria-aws-architecture.md): versión legible y fallback del diagrama.
+- [Diagrama completo de infraestructura AWS](architecture/sentinelmonitoria-aws-infrastructure.md): estado validado de staging, objetivo por fases, seguridad, flujos y operación.
 - [Diagrama AWS editable](architecture/sentinelmonitoria-aws-architecture.drawio): archivo editable en diagrams.net/draw.io con estilos de recursos AWS.
 - [Arquitectura del agente](architecture/agent-architecture.md): Vector, fuentes, transformaciones y sink HTTP.
 

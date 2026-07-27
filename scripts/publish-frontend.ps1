@@ -5,9 +5,11 @@ param(
     [string]$EnvironmentName = "staging",
     [string]$ProjectName = "SentinelMonitorIA",
     [string]$Profile = "",
-    [string]$CloudFrontDomainName = "",
+    [string]$ApiBaseUrl = "",
+    [ValidateSet("rules", "lex_bedrock")]
+    [string]$ChatProvider = "rules",
     [string]$BucketName = "",
-    [string]$DistributionId = "",
+    [string]$WebsiteUrl = "",
     [switch]$SkipBuild,
     [switch]$DryRun
 )
@@ -52,27 +54,35 @@ if ($Profile) {
     $awsPrefix += @("--profile", $Profile)
 }
 
-if (-not $CloudFrontDomainName) {
-    $CloudFrontDomainName = Get-ExportValue -ExportName "$ProjectName-$EnvironmentName-CloudFrontDomainName"
-}
 if (-not $BucketName) {
     $BucketName = Get-ExportValue -ExportName "$ProjectName-$EnvironmentName-FrontendBucketName"
 }
-if (-not $DistributionId) {
-    $DistributionId = Get-ExportValue -ExportName "$ProjectName-$EnvironmentName-CloudFrontDistributionId"
+$null = & aws @awsPrefix s3api get-bucket-website --bucket $BucketName --region $Region 2>&1
+if ($LASTEXITCODE -ne 0) {
+    throw "S3 bucket '$BucketName' is not configured as a Website bucket. Pass -BucketName for the approved public S3 Website bucket."
 }
-
-$CloudFrontDomainName = $CloudFrontDomainName -replace "^https?://", ""
-$apiBaseUrl = "https://$CloudFrontDomainName"
+if (-not $ApiBaseUrl) {
+    $albDnsName = Get-ExportValue -ExportName "$ProjectName-$EnvironmentName-LoadBalancerDnsName"
+    $ApiBaseUrl = "http://$($albDnsName -replace '^https?://', '')"
+}
+$ApiBaseUrl = $ApiBaseUrl.TrimEnd("/")
+if ($ApiBaseUrl -notmatch '^https?://') {
+    throw "ApiBaseUrl must start with http:// or https://"
+}
+if (-not $WebsiteUrl) {
+    $WebsiteUrl = "http://$BucketName.s3-website-$Region.amazonaws.com"
+}
 
 if (-not $SkipBuild) {
     $previousApiBaseUrl = $env:VITE_API_BASE_URL
+    $previousChatProvider = $env:VITE_CHAT_PROVIDER
     $locationPushed = $false
     try {
-        $env:VITE_API_BASE_URL = $apiBaseUrl
+        $env:VITE_API_BASE_URL = $ApiBaseUrl
+        $env:VITE_CHAT_PROVIDER = $ChatProvider
         Push-Location $frontendRoot
         $locationPushed = $true
-        Write-Host "Building frontend with VITE_API_BASE_URL=$apiBaseUrl" -ForegroundColor Cyan
+        Write-Host "Building frontend with VITE_API_BASE_URL=$ApiBaseUrl and VITE_CHAT_PROVIDER=$ChatProvider" -ForegroundColor Cyan
         & npm run build
         if ($LASTEXITCODE -ne 0) {
             throw "Frontend build failed."
@@ -82,6 +92,7 @@ if (-not $SkipBuild) {
             Pop-Location
         }
         $env:VITE_API_BASE_URL = $previousApiBaseUrl
+        $env:VITE_CHAT_PROVIDER = $previousChatProvider
     }
 }
 
@@ -107,13 +118,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "S3 frontend publication failed."
 }
 
-if (-not $DryRun) {
-    Write-Host "Creating CloudFront invalidation for $DistributionId" -ForegroundColor Cyan
-    & aws @awsPrefix cloudfront create-invalidation --region $Region --distribution-id $DistributionId --paths "/*"
-    if ($LASTEXITCODE -ne 0) {
-        throw "CloudFront invalidation failed."
-    }
-}
-
 Write-Host "Frontend publication completed." -ForegroundColor Green
-Write-Host "Public URL: $apiBaseUrl"
+Write-Host "Public URL: $WebsiteUrl"
+Write-Host "API base URL: $ApiBaseUrl"
+Write-Host "Chat provider label: $ChatProvider"

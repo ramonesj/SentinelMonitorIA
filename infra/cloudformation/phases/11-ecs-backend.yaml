@@ -48,6 +48,32 @@ Parameters:
     Default: 'true'
     AllowedValues: ['true', 'false']
     Description: Enable TLS for the ElastiCache Redis connection.
+  ChatProvider:
+    Type: String
+    Default: lex_bedrock
+    AllowedValues: [rules, lex_bedrock]
+  LexBotId:
+    Type: String
+    Default: XFVQNCQTHX
+  LexBotAliasId:
+    Type: String
+    Default: 67MRXD4DQB
+  LexLocaleId:
+    Type: String
+    Default: es_419
+  AiProvider:
+    Type: String
+    Default: bedrock
+    AllowedValues: [rules, ollama, bedrock]
+  AiModelId:
+    Type: String
+    Default: amazon.nova-lite-v1:0
+  AiKnowledgeBaseId:
+    Type: String
+    Default: 0MZLR4E2G7
+  AiLogArchiveBucket:
+    Type: String
+    Default: sentinel-monitoria-19-ai-platfo-ailogarchivebucket-ygiw2tw8v6td
 
 Resources:
   BackendTaskDefinition:
@@ -145,6 +171,22 @@ Resources:
               Value: '1000'
             - Name: QUEUE_PROVIDER
               Value: redis
+            - Name: CHAT_PROVIDER
+              Value: !Ref ChatProvider
+            - Name: LEX_BOT_ID
+              Value: !Ref LexBotId
+            - Name: LEX_BOT_ALIAS_ID
+              Value: !Ref LexBotAliasId
+            - Name: LEX_LOCALE_ID
+              Value: !Ref LexLocaleId
+            - Name: AI_PROVIDER
+              Value: !Ref AiProvider
+            - Name: AI_MODEL_ID
+              Value: !Ref AiModelId
+            - Name: AI_KNOWLEDGE_BASE_ID
+              Value: !Ref AiKnowledgeBaseId
+            - Name: AI_LOG_ARCHIVE_BUCKET
+              Value: !Ref AiLogArchiveBucket
             - Name: HEALTH_CHECK_TIMEOUT
               Value: '5'
             - Name: HEALTH_CHECK_RETRIES

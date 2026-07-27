@@ -91,10 +91,12 @@ async def chat(
         )
         alerts = list(result.scalars().all())
 
+    conversation_id = request.conversation_id or str(uuid4())
     context = {
         "organization_count": len(organization_ids),
         "alerts": [_serialize_alert_context(alert) for alert in alerts],
         "request_context": request.context,
+        "conversation_id": conversation_id,
     }
     provider = build_chat_provider()
     result = await provider.respond(request.message.strip(), context)
@@ -105,7 +107,7 @@ async def chat(
 
     return {
         "status": "success",
-        "conversation_id": request.conversation_id or str(uuid4()),
+        "conversation_id": conversation_id,
         "provider": provider.name,
         "message": result.message,
         "suggestions": result.suggestions,
